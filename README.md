@@ -224,13 +224,13 @@ Each class includes CRUD operations and gameplay logic.
 
 
 ---
-##📄 Project Description
+## 📄 Project Description
 
 This project is a terminal-based incremental game where the player performs timed actions, earns rewards, and invests them into a skill tree progression system.
 
-##📜 License
+## 📜 License
   MIT License
 
 
 
-#💡 "You only have 10 seconds. What will you do with them?"
+# 💡 "You only have 10 seconds. What will you do with them?"
