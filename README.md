@@ -6,7 +6,7 @@ A terminal-based incremental adventure game where every action takes **10 second
 
 ## 🎮 Overview
 
-**10 Second Quest** is a simple but engaging incremental game where the player performs timed actions, gains rewards, and invests them into a **skill tree system**.
+**Pulse** is a simple but engaging incremental game where the player performs timed actions, gains rewards, and invests them into a **skill tree system**.
 
 ---
 
@@ -222,6 +222,8 @@ Each class includes CRUD operations and gameplay logic.
     python main.py
 ```
 
+
+---
 ##📄 Project Description
 
 This project is a terminal-based incremental game where the player performs timed actions, earns rewards, and invests them into a skill tree progression system.
