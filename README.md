@@ -67,22 +67,22 @@ The skill tree allows players to upgrade their abilities and improve efficiency.
 ---
 ==== 10 Second Quest ====
 
-1.Create player
-2.Show player
-3.Start action
-4.Collect rewards
-5.Show inventory
-6.Show skill tree
-7.Unlock skill
-8.Exit
+- Create player
+- Show player
+- Start action
+- Collect rewards
+- Show inventory
+- Show skill tree
+- Unlock skill
+- Exit
 
 
 ### Action Example
 Choose action:
 
-1.Train Strength
-2.Mine Stone
-3.Hunt Slime
+- Train Strength
+- Mine Stone
+- Hunt Slime
 
 Action started...
 Wait 10 seconds...
