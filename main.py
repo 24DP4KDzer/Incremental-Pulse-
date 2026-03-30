@@ -27,6 +27,48 @@ save_notification_timer = 0
 save_notification_msg = ""
 current_wave = 1
 
+# --- UPDATED CLASS: SPINNING MELEE SWING ---
+class MeleeSwing:
+    def __init__(self, owner, color):
+        self.owner = owner
+        self.color = color
+        self.angle = 0
+        # Use the player's rotation_speed if it exists, otherwise default to 15
+        self.spin_speed = getattr(owner, 'rotation_speed', 15) 
+        self.radius = owner.attack_radius
+        self.lifetime = 360 // self.spin_speed 
+        self.hit_enemies = [] 
+        # ... rest of __init__ remains the same
+
+        # Axe Image Placeholder
+        self.surface = pygame.Surface((70, 35), pygame.SRCALPHA)
+        pygame.draw.rect(self.surface, (100, 50, 0), (0, 12, 50, 10)) # Handle
+        pygame.draw.rect(self.surface, (200, 200, 200), (45, 0, 25, 35)) # Blade head
+
+    def update(self, enemies, damage):
+        self.angle += self.spin_speed
+        self.lifetime -= 1
+        
+        # Calculate current position of the axe head for collision
+        rad = math.radians(self.angle)
+        axe_x = self.owner.rect.centerx + math.cos(rad) * self.radius
+        axe_y = self.owner.rect.centery + math.sin(rad) * self.radius
+        axe_rect = pygame.Rect(axe_x - 25, axe_y - 25, 50, 50)
+
+        # Collision with ALL enemies (CLEAVE logic)
+        for e in enemies:
+            if e not in self.hit_enemies and axe_rect.colliderect(e.rect):
+                e.health -= damage
+                self.hit_enemies.append(e)
+
+    def draw(self, surface):
+        rotated_axe = pygame.transform.rotate(self.surface, -self.angle)
+        rad = math.radians(self.angle)
+        pos_x = self.owner.rect.centerx + math.cos(rad) * self.radius
+        pos_y = self.owner.rect.centery + math.sin(rad) * self.radius
+        rect = rotated_axe.get_rect(center=(pos_x, pos_y))
+        surface.blit(rotated_axe, rect)
+
 def trigger_save_anim(msg):
     global save_notification_timer, save_notification_msg
     save_notification_timer = 90
@@ -38,8 +80,7 @@ def save_game_csv(name, char_type, p, s_tree):
         with open(PLAYER_FILE, 'r', newline='') as f:
             p_rows = list(csv.DictReader(f))
     
-    current_record = getattr(p, 'highscore', 1)
-    if globals().get('current_wave', 1) > current_record:
+    if globals().get('current_wave', 1) > getattr(p, 'highscore', 1):
         p.highscore = globals().get('current_wave', 1)
 
     new_p_data = {
@@ -91,8 +132,13 @@ def load_game_csv(name, char_type, p, s_tree):
                     p.highscore = s_i("highscore", 1)
                     s_tree.sync_with_player(p)
 
-# 3. SPRITES (Main Menu / Selection only)
-def load_sprite(path, size=(320, 320)):
+def get_dist_to_rect(point, rect):
+    px = max(rect.left, min(point[0], rect.right))
+    py = max(rect.top, min(point[1], rect.bottom))
+    return math.hypot(point[0] - px, point[1] - py)
+
+# 3. SPRITES & OBJECTS
+def load_sprite(path, size=(280, 280)):
     try:
         img = pygame.image.load(path).convert_alpha()
         return pygame.transform.scale(img, size)
@@ -101,27 +147,30 @@ def load_sprite(path, size=(320, 320)):
         surf.fill((255, 0, 255)) 
         return surf
 
-# Pre-loading for the Character Select screen
 wizard_ui = load_sprite("photos/pixil-frame-going-right.png") 
 shadow_ui = load_sprite("photos/wizard_left.png") 
 dwarf_ui = load_sprite("photos/pixil-frame-going-up.png")
 
 class Chest:
     def __init__(self):
-        self.rect = pygame.Rect(random.randint(200, screen_w-200), random.randint(200, screen_h-200), 40, 40)
-    def draw(self, surf):
-        pygame.draw.rect(surf, (255, 215, 0), self.rect, border_radius=8)
-        pygame.draw.rect(surf, (255, 255, 255), self.rect, 2, border_radius=8)
+        self.rect = pygame.Rect(random.randint(100, screen_w-100), random.randint(100, screen_h-100), 40, 40)
+        self.color = (255, 215, 0)
+    def draw(self, surface):
+        pygame.draw.rect(surface, self.color, self.rect)
+        pygame.draw.rect(surface, (255, 255, 255), self.rect, 2)
 
-# 4. GAME OBJECTS
 game_state, user_name = "menu", ""
 player = Player()
 skills = SkillTree(screen_w, screen_h)
-bosses, enemies, projectiles, coins, chests = [], [], [], [], []
+bosses, enemies, projectiles, coins, chests, active_swings = [], [], [], [], [], []
 boss_energy, boss_goal, max_enemies = 0, 100, 4
+time_freeze_timer = 0
+nuke_flash_timer = 0
 
 darkness_surf = pygame.Surface((screen_w, screen_h))
 darkness_surf.fill((0, 0, 0))
+freeze_surf = pygame.Surface((screen_w, screen_h), pygame.SRCALPHA)
+freeze_surf.fill((0, 150, 255, 40))
 
 def spawn_enemy(hp_m=1.0, spd_m=1.0):
     e = Enemy(random.randint(0, screen_w), random.randint(0, screen_h))
@@ -136,37 +185,24 @@ def spawn_coin():
     coins.append(c)
 
 # --- MAIN LOOP ---
+flicker_val = 0
 while True:
     screen.fill((5, 5, 10))
-    m_pos, m_click = pygame.mouse.get_pos(), pygame.mouse.get_pressed()
+    m_pos = pygame.mouse.get_pos()
+    m_click = pygame.mouse.get_pressed()
+    flicker_val += 0.08 
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT: 
             pygame.quit(); sys.exit()
-        
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
                 if user_name and player.char_type: save_game_csv(user_name, player.char_type, player, skills)
                 pygame.quit(); sys.exit()
-            
             if game_state == "menu":
                 if event.key == pygame.K_RETURN and user_name.strip(): game_state = "char_select"
                 elif event.key == pygame.K_BACKSPACE: user_name = user_name[:-1]
                 else: user_name += event.unicode
-            
-            elif game_state == "char_select":
-                sel = None
-                if event.key == pygame.K_1: sel = "wizard"
-                elif event.key == pygame.K_2: sel = "shadow"
-                elif event.key == pygame.K_3: sel = "dwarf"
-                if sel:
-                    player.setup_class(sel)
-                    load_game_csv(user_name, sel, player, skills)
-                    enemies.clear(); bosses.clear(); projectiles.clear(); coins.clear(); chests.clear()
-                    current_wave, max_enemies = 1, 4
-                    for _ in range(max_enemies): spawn_enemy()
-                    game_state = "playing"
-            
             elif game_state == "playing" and event.key == pygame.K_SPACE:
                 if player.dash_unlocked and player.dash_cooldown <= 0:
                     k = pygame.key.get_pressed()
@@ -181,16 +217,31 @@ while True:
                         player.dash_cooldown = 100 
 
         if event.type == pygame.MOUSEBUTTONDOWN:
-            if game_state == "skill_tree":
-                res = skills.handle_click(event.pos, player)
-                if res:
-                    save_game_csv(user_name, player.char_type, player, skills)
-                    if res == "respawn":
-                        player.health, player.energy = player.max_health, player.max_energy
-                        enemies.clear(); bosses.clear(); projectiles.clear(); coins.clear(); chests.clear()
-                        current_wave, max_enemies = 1, 4
+            if game_state == "char_select":
+                for i in range(3):
+                    rect = pygame.Rect(screen_w // 2 - 450 + (i * 310), 200, 280, 400)
+                    if rect.collidepoint(event.pos):
+                        sel = ["wizard", "shadow", "dwarf"][i]
+                        player.setup_class(sel)
+                        load_game_csv(user_name, sel, player, skills)
+                        enemies.clear(); bosses.clear(); projectiles.clear(); coins.clear(); chests.clear(); active_swings.clear()
+                        current_wave, max_enemies, time_freeze_timer = 1, 4, 0
                         for _ in range(max_enemies): spawn_enemy()
                         game_state = "playing"
+            
+            # FIXED: Added click detection for the skill tree
+            elif game_state == "skill_tree":
+                result = skills.handle_click(event.pos, player)
+                if result == "respawn":
+                    enemies.clear(); bosses.clear(); projectiles.clear(); active_swings.clear()
+                    player.health = player.max_health
+                    player.energy = player.max_energy
+                    current_wave = 1
+                    max_enemies = 4
+                    for _ in range(max_enemies): spawn_enemy()
+                    game_state = "playing"
+                elif result == "saved":
+                    trigger_save_anim("UPGRADED!")
 
     if game_state == "menu":
         title = pygame.font.SysFont("Impact", 100).render("PULSE", True, (0, 255, 150))
@@ -200,21 +251,26 @@ while True:
 
     elif game_state == "char_select":
         title = pygame.font.SysFont("Impact", 60).render("SELECT CHARACTER", True, (255, 255, 255))
-        screen.blit(title, (screen_w//2 - title.get_width()//2, 100))
-        classes = [("1. WIZARD", (0, 200, 255), wizard_ui), ("2. SHADOW", (150, 0, 255), shadow_ui), ("3. DWARF", (255, 150, 0), dwarf_ui)]
+        screen.blit(title, (screen_w//2 - title.get_width()//2, 80))
+        classes = [("WIZARD", (0, 200, 255), wizard_ui), ("SHADOW", (150, 0, 255), shadow_ui), ("DWARF", (255, 150, 0), dwarf_ui)]
         for i, (name, col, img) in enumerate(classes):
-            rect = pygame.Rect(screen_w//2 - 450 + (i * 320), 250, 250, 350)
+            rect = pygame.Rect(screen_w // 2 - 450 + (i * 310), 200, 280, 400)
+            is_hovered = rect.collidepoint(m_pos)
+            border_col = (255, 255, 255) if is_hovered else col
             pygame.draw.rect(screen, (20, 20, 30), rect, border_radius=15)
-            pygame.draw.rect(screen, col, rect, 3, border_radius=15)
-            screen.blit(img, (rect.centerx - 40, rect.y + 50)) 
-            name_t = pygame.font.SysFont("Arial", 28, bold=True).render(name, True, col)
-            screen.blit(name_t, name_t.get_rect(center=(rect.centerx, rect.y + 300)))
+            pygame.draw.rect(screen, border_col, rect, 3 if is_hovered else 2, border_radius=15)
+            screen.blit(img, img.get_rect(center=(rect.centerx, rect.centery - 20))) 
+            name_t = pygame.font.SysFont("Impact", 32).render(name, True, border_col)
+            screen.blit(name_t, name_t.get_rect(center=(rect.centerx, rect.bottom - 45)))
 
     elif game_state == "playing":
-        # --- LOGIC ---
-        player.energy -= 1/60 
+        if time_freeze_timer <= 0:
+            player.energy -= 1/60 
+        
         if player.energy <= 0: player.health = 0
         if player.dash_cooldown > 0: player.dash_cooldown -= 1
+        if time_freeze_timer > 0: time_freeze_timer -= 1
+        if nuke_flash_timer > 0: nuke_flash_timer -= 1
 
         if not enemies and not bosses:
             current_wave += 1
@@ -227,15 +283,11 @@ while True:
         player.rect.clamp_ip(screen.get_rect())
 
         while len(coins) < 5: spawn_coin()
-        
-        # Magnet Logic
-        for c in coins:
+        for c in coins[:]:
             dist = math.hypot(player.rect.centerx - c.rect.centerx, player.rect.centery - c.rect.centery)
             if dist < player.magnet_range:
                 c.rect.x += (player.rect.centerx - c.rect.centerx) * 0.1
                 c.rect.y += (player.rect.centery - c.rect.centery) * 0.1
-
-        for c in coins[:]:
             c.draw(screen)
             if player.rect.colliderect(c.rect):
                 player.money += 1; player.energy = min(player.max_energy, player.energy + 1.2)
@@ -244,72 +296,87 @@ while True:
         for ch in chests[:]:
             ch.draw(screen)
             if player.rect.colliderect(ch.rect):
-                player.energy = player.max_energy
-                trigger_save_anim("MAX ENERGY!")
+                effect = random.choice(["energy", "freeze", "nuke"])
+                if effect == "energy": player.energy = player.max_energy; trigger_save_anim("MAX ENERGY!")
+                elif effect == "freeze": time_freeze_timer = 300; trigger_save_anim("TIME FREEZE!")
+                elif effect == "nuke": 
+                    nuke_flash_timer = 15; trigger_save_anim("SCREEN WIPE!")
+                    for e in enemies[:]: e.health = 0
                 chests.remove(ch)
 
-        # Combat Logic
+        # --- UPDATED ATTACK LOGIC ---
         if m_click[0] and player.attack_cooldown <= 0:
-            targets = [e for e in (enemies + bosses) if pygame.math.Vector2(player.rect.center).distance_to(e.rect.center) < player.attack_radius]
-            targets.sort(key=lambda t: pygame.math.Vector2(player.rect.center).distance_to(t.rect.center))
-            if targets:
-                for i in range(min(len(targets), player.projectiles_count)):
-                    projectiles.append(Projectile(player.rect.centerx, player.rect.centery, targets[i], player.color, player.attack_radius * 1.5))
+            if player.char_type == "dwarf":
+                active_swings.append(MeleeSwing(player, player.color))
                 player.attack_cooldown = player.base_cooldown
+            else:
+                targets = [e for e in (enemies + bosses) if get_dist_to_rect(player.rect.center, e.rect) <= player.attack_radius]
+                if targets:
+                    targets.sort(key=lambda t: get_dist_to_rect(player.rect.center, t.rect))
+                    for i in range(min(len(targets), player.projectiles_count)):
+                        projectiles.append(Projectile(player.rect.centerx, player.rect.centery, targets[i], player.color, player.attack_radius * 1.5))
+                    player.attack_cooldown = player.base_cooldown
 
-        for p in projectiles[:]:
-            if p.update(enemies + bosses):
-                p.draw(screen)
-                if p.rect.colliderect(p.target.rect):
-                    p.target.health -= player.damage
-                    if p in projectiles: projectiles.remove(p)
+        for s in active_swings[:]:
+            s.update(enemies + bosses, player.damage)
+            s.draw(screen)
+            if s.lifetime <= 0: active_swings.remove(s)
+
+        for p_obj in projectiles[:]:
+            if p_obj.update(enemies + bosses):
+                p_obj.draw(screen)
+                if p_obj.rect.colliderect(p_obj.target.rect):
+                    p_obj.target.health -= player.damage
+                    if p_obj in projectiles: projectiles.remove(p_obj)
             else: 
-                if p in projectiles: projectiles.remove(p)
+                if p_obj in projectiles: projectiles.remove(p_obj)
 
         for e in enemies[:]:
-            e.update(player.rect); e.draw(screen)
-            if e.health <= 0: 
-                enemies.remove(e); player.money += 2; boss_energy += 10
-            elif player.rect.colliderect(e.rect): player.health -= 0.3
+            if time_freeze_timer <= 0:
+                e.update(player.rect)
+                if player.rect.colliderect(e.rect): player.health -= 0.3
+            e.draw(screen)
+            if e.health <= 0: enemies.remove(e); player.money += 2; boss_energy += 10
             
         for b in bosses[:]:
-            b.update(player.rect); b.draw(screen)
-            if b.health <= 0: 
-                bosses.remove(b); player.money += 50; player.skill_points += 1; trigger_save_anim("+1 SP!")
-            elif player.rect.colliderect(b.rect): player.health -= 0.8
+            if time_freeze_timer <= 0:
+                b.update(player.rect)
+                if player.rect.colliderect(b.rect): player.health -= 0.8
+            b.draw(screen)
+            if b.health <= 0: bosses.remove(b); player.money += 50; player.skill_points += 1; trigger_save_anim("+1 SP!")
 
-        if boss_energy >= boss_goal:
-            bosses.append(Boss(screen_w, screen_h))
-            boss_energy = 0
+        if boss_energy >= boss_goal: bosses.append(Boss(screen_w, screen_h)); boss_energy = 0
 
-        # --- DRAWING ---
-        player.draw(screen)
+        player.draw(screen) 
+        # Draw Pulse Aura
+        aura_diameter = int(player.attack_radius * 2)
+        pulse = int(5 * math.sin(flicker_val)) 
+        aura_size = aura_diameter + pulse
+        temp_aura = pygame.Surface((aura_size, aura_size), pygame.SRCALPHA)
+        for r in range(aura_size // 2, 0, -4):
+            alpha = int(160 * (r / (aura_size // 2)))
+            pygame.draw.circle(temp_aura, (0, 0, 0, alpha), (aura_size // 2, aura_size // 2), r)
+        screen.blit(temp_aura, temp_aura.get_rect(center=player.rect.center))
+        
+        if nuke_flash_timer > 0:
+            flash = pygame.Surface((screen_w, screen_h)); flash.fill((255,255,255))
+            flash.set_alpha(int((nuke_flash_timer/15)*255)); screen.blit(flash, (0,0))
+        if time_freeze_timer > 0:
+            screen.blit(freeze_surf, (0, 0))
+            ui_freeze = pygame.font.SysFont("Impact", 40).render("TIME FROZEN!", True, (0, 200, 255))
+            screen.blit(ui_freeze, ui_freeze.get_rect(center=(screen_w//2, 100)))
 
-        # Dash Bar
-        if player.dash_cooldown > 0:
-            pygame.draw.rect(screen, (40, 40, 40), (player.rect.x, player.rect.bottom + 5, 60, 4))
-            w = 60 * (1 - (player.dash_cooldown / 100))
-            pygame.draw.rect(screen, (0, 200, 255), (player.rect.x, player.rect.bottom + 5, w, 4))
-
-        # Darkness Effect
-        energy_ratio = player.energy / player.max_energy
-        if energy_ratio < 0.4:
-            darkness_surf.set_alpha(int((1 - energy_ratio) * 160))
-            screen.blit(darkness_surf, (0,0))
-
-        # UI
+        # HUD
         ui_f = pygame.font.SysFont("Consolas", 22, bold=True)
         screen.blit(ui_f.render(f"GOLD: ${player.money} | SP: {player.skill_points}", True, (255, 215, 0)), (20, 20))
         screen.blit(ui_f.render(f"WAVE: {current_wave} (BEST: {player.highscore})", True, (200, 200, 255)), (20, 50))
-        
-        # Bottom Center Bars
         bar_x, bar_y = screen_w//2-100, screen_h-55
-        pygame.draw.rect(screen, (20, 20, 40), (bar_x, bar_y, 200, 10)) # Energy BG
-        pygame.draw.rect(screen, (0, 150, 255), (bar_x, bar_y, max(0, energy_ratio * 200), 10)) # Energy FG
-        pygame.draw.rect(screen, (60, 0, 0), (bar_x, bar_y + 15, 200, 15)) # Health BG
-        pygame.draw.rect(screen, (0, 255, 120), (bar_x, bar_y + 15, max(0, (player.health/player.max_health)*200), 15)) # Health FG
+        pygame.draw.rect(screen, (20, 20, 40), (bar_x, bar_y, 200, 10))
+        pygame.draw.rect(screen, (0, 150, 255), (bar_x, bar_y, max(0, (player.energy/player.max_energy)*200), 10))
+        pygame.draw.rect(screen, (60, 0, 0), (bar_x, bar_y + 15, 200, 15))
+        pygame.draw.rect(screen, (0, 255, 120), (bar_x, bar_y + 15, max(0, (player.health/player.max_health)*200), 15))
 
-        if player.health <= 0:
+        if player.health <= 0: 
             save_game_csv(user_name, player.char_type, player, skills)
             game_state, death_timer = "dead", 120
         if player.attack_cooldown > 0: player.attack_cooldown -= 1
@@ -321,7 +388,7 @@ while True:
         if death_timer <= 0: game_state = "skill_tree"
 
     elif game_state == "skill_tree":
-        skills.draw(screen, player.money, player.skill_points)
+        skills.draw(screen, player.money, player.skill_points, player.char_type)
         if save_notification_timer > 0:
             t = pygame.font.SysFont("Arial", 22, bold=True).render(save_notification_msg, True, (0, 255, 150))
             screen.blit(t, t.get_rect(center=(screen_w // 2, 40)))

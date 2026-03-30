@@ -99,4 +99,4 @@ class Player:
             
         # Visual for Homing Range Outline
         if self.attack_style == "homing":
-            pygame.draw.circle(screen, self.color, self.rect.center, self.attack_radius, 1)
+            pygame.draw.circle(screen, (0,0,0), self.rect.center, self.attack_radius, 3)
