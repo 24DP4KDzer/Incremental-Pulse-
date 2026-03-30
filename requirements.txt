@@ -1,1 +1,11 @@
-pygame
+1. winget install -e --id Python.Python.3.12
+
+2. python --version
+
+3. python -m pip install pygame
+
+4. py -3.12 c:\Users\**user**\Documents\Incremental-Pulse-\main.py
+
+
+
+
