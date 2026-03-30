@@ -59,17 +59,57 @@ class SkillTree:
 
     def sync_with_player(self, player):
         for s in self.skills:
-            if s["id"] == "health": s["level"] = int((player.max_health - 100) / 20)
-            elif s["id"] == "speed": s["level"] = int((player.speed - 1.3) / 0.4)
-            elif s["id"] == "damage": s["level"] = int((player.damage - 1.0) / 0.5)
-            elif s["id"] == "range": s["level"] = int((player.attack_radius - 100) / 20)
-            elif s["id"] == "stamina": s["level"] = int((player.max_energy - 10.0) / 2.0)
-            elif s["id"] == "magnet": s["level"] = int((player.magnet_range - 60) / 15)
-            elif s["id"] == "dash": s["level"] = 1 if player.dash_unlocked else 0
+            lvl = s["level"]
+            # --- STAT APPLICATION ---
+            if s["id"] == "health": 
+                player.max_health += 20
+                player.health = player.max_health
+            elif s["id"] == "armor": 
+                player.armor = getattr(player, 'armor', 0) + 1
+            elif s["id"] == "thorns": 
+                player.thorns = getattr(player, 'thorns', 0) + 5
+            elif s["id"] == "regen": 
+                player.regen = getattr(player, 'regen', 0) + 0.1
+            elif s["id"] == "magnet": 
+                player.magnet_range += 15
+            elif s["id"] == "greed":
+                player.gold_modifier = getattr(player, 'gold_modifier', 1.0) + 0.2
+            elif s["id"] == "knockback":
+                player.knockback_force = getattr(player, 'knockback_force', 5) + 2
+            elif s["id"] == "lifesteal":
+                player.lifesteal = getattr(player, 'lifesteal', 0) + 1 # 1% chance or 1 HP
+            elif s["id"] == "stamina": 
+                player.max_energy += 2.0
+                player.energy = player.max_energy
+            elif s["id"] == "buy_sp": 
+                player.skill_points += 1
+            elif s["id"] == "chrono":
+                player.time_dilation = getattr(player, 'time_dilation', 1.0) - 0.05
+            elif s["id"] == "speed": 
+                player.speed += 0.4
+            elif s["id"] == "dash": 
+                player.dash_unlocked = True
+            elif s["id"] == "dash_cd":
+                player.dash_cd_reduction = getattr(player, 'dash_cd_reduction', 0) + 10
+            elif s["id"] == "damage": 
+                player.damage += 0.5
+            elif s["id"] == "range": 
+                if player.char_type == "dwarf":
+                    player.rotation_speed = getattr(player, 'rotation_speed', 15) + 3
+                else:
+                    player.attack_radius += 20
+            elif s["id"] == "multi":
+                player.projectile_count = getattr(player, 'projectile_count', 1) + 1
+            elif s["id"] == "crit":
+                player.crit_chance = getattr(player, 'crit_chance', 0) + 5 # +5% chance
             
             s["level"] = max(0, min(s["level"], s["max"]))
             if s["currency"] == "gold" and s["id"] != "buy_sp":
-                s["cost"] = int(s["cost"] * (1.5 ** s["level"]))
+                s["cost"] = int(s["cost"] * (1.5 ** lvl))
+
+        player.health = player.max_health
+        player.energy = player.max_energy
+
 
     def draw_connection(self, surface, start, end, active):
         col = (200, 200, 200, 150) if active else (50, 50, 60, 80)
@@ -80,12 +120,17 @@ class SkillTree:
             py = start[1] + (end[1] - start[1]) * t
             pygame.draw.circle(surface, (255, 255, 255), (int(px), int(py)), 2)
 
+
+
     def draw(self, screen, money, sp, char_type):
         self.animation_timer += 1
         screen.blit(self.vignette, (0,0))
         
         screen.blit(self.stat_font.render(f"GOLD: ${money}", True, (255, 215, 0)), (40, 40))
         screen.blit(self.stat_font.render(f"SKILL POINTS: {sp}", True, (0, 255, 150)), (40, 65))
+
+
+
 
         # Connections (filtered)
         for s in self.skills:
@@ -118,6 +163,8 @@ class SkillTree:
             lvl_surf = self.stat_font.render(f"{s['level']}/{s['max']}", True, s["color"])
             screen.blit(name_surf, name_surf.get_rect(center=(x, y - 8)))
             screen.blit(lvl_surf, lvl_surf.get_rect(center=(x, y + 10)))
+
+            
 
             # --- Updated Cost Label Section ---
             if s["level"] < s["max"]:
@@ -155,9 +202,16 @@ class SkillTree:
 
                 s["level"] += 1
                 
+                # Add Stats To Player
                 if s["id"] == "health": 
                     player.max_health += 20
                     player.health = player.max_health
+                elif s["id"] == "armor": 
+                    player.armor = getattr(player, 'armor', 0) + 1
+                elif s["id"] == "thorns": 
+                    player.thorns = getattr(player, 'thorns', 0) + 5
+                elif s["id"] == "regen": 
+                    player.regen = getattr(player, 'regen', 0) + 0.05
                 elif s["id"] == "speed": 
                     player.speed += 0.4
                 elif s["id"] == "damage": 
@@ -167,11 +221,20 @@ class SkillTree:
                     player.energy = player.max_energy
                 elif s["id"] == "magnet": 
                     player.magnet_range += 15
+                elif s["id"] == "greed":
+                    player.gold_modifier = getattr(player, 'gold_modifier', 1.0) + 0.2
+                elif s["id"] == "knockback":
+                    player.knockback_force = getattr(player, 'knockback_force', 5) + 2
+                elif s["id"] == "lifesteal":
+                    player.lifesteal = getattr(player, 'lifesteal', 0) + 1
+                elif s["id"] == "crit":
+                    player.crit_chance = getattr(player, 'crit_chance', 0) + 5
+                elif s["id"] == "chrono":
+                    player.time_dilation = getattr(player, 'time_dilation', 1.0) - 0.05
                 elif s["id"] == "buy_sp": 
                     player.skill_points += 1
                 elif s["id"] == "dash": 
                     player.dash_unlocked = True
-                # Note: Range node logic is handled here too, but Dwarf can't reach it now
                 elif s["id"] == "range":
                     player.attack_radius += 20
                 
