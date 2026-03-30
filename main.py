@@ -6,7 +6,7 @@ import os
 import math
 from player import Player
 from enemy import Enemy
-from action import Coin, SpecialCoin
+from action import Coin, SpecialCoin, HpCoin
 from projectile import Projectile
 from skill_tree import SkillTree
 from boss import Boss
@@ -38,6 +38,11 @@ def save_game_csv(name, char_type, p, s_tree):
         with open(PLAYER_FILE, 'r', newline='') as f:
             p_rows = list(csv.DictReader(f))
     
+    # Check if current wave is higher than the stored highscore
+    current_record = getattr(p, 'highscore', 1)
+    if globals().get('current_wave', 1) > current_record:
+        p.highscore = globals().get('current_wave', 1)
+
     new_p_data = {
         "name": name, "char_type": char_type, "money": p.money, 
         "max_health": p.max_health, "radius": p.attack_radius, 
@@ -47,7 +52,8 @@ def save_game_csv(name, char_type, p, s_tree):
         "max_energy": getattr(p, 'max_energy', 10.0),
         "sp": getattr(p, 'skill_points', 0),
         "magnet": getattr(p, 'magnet_range', 60),
-        "dash": int(getattr(p, 'dash_unlocked', False))
+        "dash": int(getattr(p, 'dash_unlocked', False)),
+        "highscore": getattr(p, 'highscore', 1) # NEW FIELD
     }
     
     found_p = False
@@ -56,8 +62,7 @@ def save_game_csv(name, char_type, p, s_tree):
             p_rows[i] = new_p_data
             found_p = True
             break
-    if not found_p: 
-        p_rows.append(new_p_data)
+    if not found_p: p_rows.append(new_p_data)
     
     with open(PLAYER_FILE, 'w', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=list(new_p_data.keys()))
@@ -70,6 +75,7 @@ def load_game_csv(name, char_type, p, s_tree):
             reader = csv.DictReader(f)
             for row in reader:
                 if row["name"] == name and row["char_type"] == char_type:
+                    def s_i(k, d): return int(row[k]) if row.get(k) and row[k].strip() else d
                     def s_f(k, d): return float(row[k]) if row.get(k) and row[k].strip() else d
                     def s_i(k, d): return int(row[k]) if row.get(k) and row[k].strip() else d
                     p.money = s_i("money", 0)
@@ -84,7 +90,7 @@ def load_game_csv(name, char_type, p, s_tree):
                     p.magnet_range = s_i("magnet", 60)
                     p.dash_unlocked = bool(s_i("dash", 0))
                     p.energy = p.max_energy
-                    
+                    p.highscore = s_i("highscore", 1)
                     # SYNC THE SKILL TREE UI WITH THE LOADED STATS
                     s_tree.sync_with_player(p)
 
@@ -106,7 +112,7 @@ dwarf_img = load_sprite("image_5d25fd.png")
 game_state, user_name = "menu", ""
 player = Player()
 skills = SkillTree(screen_w, screen_h)
-bosses, enemies, projectiles, coins, special_coins = [], [], [], [], []
+bosses, enemies, projectiles, coins, special_coins, hp_coins = [], [], [], [], [], []
 boss_energy, boss_goal, max_enemies = 0, 100, 4
 
 darkness_surf = pygame.Surface((screen_w, screen_h))
@@ -129,7 +135,14 @@ def spawn_special():
     sc.rect.x, sc.rect.y = random.randint(100, screen_w-100), random.randint(100, screen_h-100)
     special_coins.append(sc)
 
+def spawn_hp():
+    hc = HpCoin()
+    hc.rect.x, hc.rect.y = random.randint(100, screen_w-100), random.randint(100, screen_h-100)
+    hp_coins.append(hc)
+
 for _ in range(5): spawn_coin()
+
+for l in range(3): spawn_hp()
 
 # --- MAIN LOOP ---
 while True:
@@ -141,8 +154,14 @@ while True:
             pygame.quit(); sys.exit()
         
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_ESCAPE: 
-                pygame.quit(); sys.exit()
+            if event.key == pygame.K_ESCAPE:
+                # Save the game before closing if a user is logged in
+                if user_name and player.char_type:
+                    save_game_csv(user_name, player.char_type, player, skills)
+                    print(f"Progress for {user_name} saved. Goodbye!")
+                
+                pygame.quit()
+                sys.exit()
             
             if game_state == "menu":
                 if event.key == pygame.K_RETURN and user_name.strip(): 
@@ -303,6 +322,13 @@ while True:
 
         ui_f = pygame.font.SysFont("Consolas", 22, bold=True)
         screen.blit(ui_f.render(f"GOLD: ${player.money} | SP: {player.skill_points} | WAVE: {current_wave}", True, (255, 215, 0)), (20, 20))
+        # UI rendering in the "playing" loop
+        ui_f = pygame.font.SysFont("Consolas", 22, bold=True)
+        screen.blit(ui_f.render(f"GOLD: ${player.money} | SP: {player.skill_points}", True, (255, 215, 0)), (20, 20))
+        
+        # Wave and Highscore display
+        wave_txt = f"WAVE: {current_wave} (BEST: {getattr(player, 'highscore', 1)})"
+        screen.blit(ui_f.render(wave_txt, True, (200, 200, 255)), (20, 50))
         
         pygame.draw.rect(screen, (20, 20, 20), (screen_w//2-100, screen_h-70, 200, 8))
         pygame.draw.rect(screen, (0, 180, 255), (screen_w//2-100, screen_h-70, max(0, (player.energy/player.max_energy)*200), 8))

@@ -14,3 +14,8 @@ class Coin:
 class SpecialCoin(Coin):
     def draw(self, screen):
         pygame.draw.circle(screen, (0, 255, 255), self.rect.center, 15)
+
+
+class HpCoin(Coin):
+    def draw(self, screen):
+        pygame.draw.circle(screen, (0, 255, 255), self.rect.center, (20))
