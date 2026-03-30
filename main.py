@@ -163,7 +163,7 @@ def load_sprite(path, size=(280, 280)):
         return surf
 
 wizard_ui = load_sprite("photos/pixil-frame-going-right.png") 
-shadow_ui = load_sprite("photos/wizard_left.png") 
+shadow_ui = load_sprite("photos/Shadow_right.png") 
 dwarf_ui = load_sprite("photos/pixil-frame-going-up.png")
 
 class Chest:
@@ -342,7 +342,6 @@ while True:
                     for i in range(min(len(targets), count)):
                         projectiles.append(Projectile(player.rect.centerx, player.rect.centery, targets[i], player.color, player.attack_radius * 1.5))
                     player.attack_cooldown = player.base_cooldown
-
         for s in active_swings[:]:
             s.update(); s.draw(screen)
             if s.lifetime <= 0: active_swings.remove(s)

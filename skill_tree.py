@@ -33,7 +33,7 @@ class SkillTree:
             # --- COLUMN 3: CORE ---
             {"id": "stamina", "name": "MAX ENERGY", "pos": (col3, row1), "cost": 60, "level": 0, "max": 15, "color": (0, 255, 255), "req": None, "currency": "gold"},
             {"id": "buy_sp", "name": "BUY SKILL PT", "pos": (col3, row2 + 40), "cost": 250, "level": 0, "max": 99, "color": (0, 255, 150), "req": None, "currency": "gold"},
-            {"id": "chrono", "name": "TIME DILATION", "pos": (col3, row4), "cost": 2, "level": 0, "max": 5, "color": (0, 150, 255), "req": "stamina", "currency": "sp"},
+            
 
             # --- COLUMN 4: MOVEMENT ---
             {"id": "speed", "name": "MOVE SPEED", "pos": (col4, row1), "cost": 40, "level": 0, "max": 10, "color": (50, 255, 150), "req": None, "currency": "gold"},
@@ -82,8 +82,6 @@ class SkillTree:
                 player.max_energy += 2.0 * lvl
             elif s["id"] == "buy_sp":
                 pass  # Don't re-grant SP on load
-            elif s["id"] == "chrono":
-                player.time_dilation = getattr(player, 'time_dilation', 1.0) - (0.05 * lvl)
             elif s["id"] == "speed":
                 player.speed += 0.4 * lvl
             elif s["id"] == "dash":

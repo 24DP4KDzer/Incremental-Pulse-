@@ -1,2 +1,4 @@
-name,char_type,money,max_health,radius,speed,damage,multi,aspeed,max_energy,sp,magnet,dash,highscore,skill_health,skill_armor,skill_thorns,skill_regen,skill_magnet,skill_greed,skill_knockback,skill_lifesteal,skill_stamina,skill_buy_sp,skill_chrono,skill_speed,skill_dash,skill_dash_cd,skill_damage,skill_range,skill_multi,skill_crit
-kaspar,wizard,56,120.0,240.0,5.800000000000001,2.0,3,25,14.0,2,90,1,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+name,char_type,money,max_health,radius,speed,damage,multi,aspeed,max_energy,sp,magnet,dash,highscore,skill_health,skill_armor,skill_thorns,skill_regen,skill_magnet,skill_greed,skill_knockback,skill_lifesteal,skill_stamina,skill_buy_sp,skill_speed,skill_dash,skill_dash_cd,skill_damage,skill_range,skill_multi,skill_crit
+eys,wizard,99999999999999936824,280.0,400.0,9.000000000000004,6.0,1,25,10.0,8,210,1,1,10,10,5,5,10,5,8,5,0,99,10,1,5,10,10,3,10
+gaynigga,wizard,11,80,200,5,1.0,1,25,10.0,0,60,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+yes,wizard,1,80,200,5,1.0,1,25,10.0,0,60,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
