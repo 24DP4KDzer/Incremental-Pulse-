@@ -367,7 +367,7 @@ while True:
                 e.update(player.rect, dilation) 
                 if player.rect.colliderect(e.rect):
                     armor = getattr(player, 'armor', 0)
-                    dmg_in = max(0.05, 0.3 - (armor * 0.03))
+                    dmg_in = max(0.15, 0.3 - (armor * 0.01))  # FIX: softer reduction, higher floor
                     player.health -= dmg_in
                     thorns = getattr(player, 'thorns', 0)
                     if thorns > 0: e.health -= thorns

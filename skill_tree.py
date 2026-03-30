@@ -60,49 +60,48 @@ class SkillTree:
     def sync_with_player(self, player):
         for s in self.skills:
             lvl = s["level"]
-            # --- STAT APPLICATION ---
-            if s["id"] == "health": 
-                player.max_health += 20
-                player.health = player.max_health
-            elif s["id"] == "armor": 
-                player.armor = getattr(player, 'armor', 0) + 1
-            elif s["id"] == "thorns": 
-                player.thorns = getattr(player, 'thorns', 0) + 5
-            elif s["id"] == "regen": 
-                player.regen = getattr(player, 'regen', 0) + 0.1
-            elif s["id"] == "magnet": 
-                player.magnet_range += 15
+            if lvl == 0:
+                continue  # Don't apply anything for unpurchased skills
+            if s["id"] == "health":
+                player.max_health += 20 * lvl
+            elif s["id"] == "armor":
+                player.armor = getattr(player, 'armor', 0) + (1 * lvl)
+            elif s["id"] == "thorns":
+                player.thorns = getattr(player, 'thorns', 0) + (5 * lvl)
+            elif s["id"] == "regen":
+                player.regen = getattr(player, 'regen', 0) + (0.1 * lvl)
+            elif s["id"] == "magnet":
+                player.magnet_range += 15 * lvl
             elif s["id"] == "greed":
-                player.gold_modifier = getattr(player, 'gold_modifier', 1.0) + 0.2
+                player.gold_modifier = getattr(player, 'gold_modifier', 1.0) + (0.2 * lvl)
             elif s["id"] == "knockback":
-                player.knockback_force = getattr(player, 'knockback_force', 5) + 2
+                player.knockback_force = getattr(player, 'knockback_force', 5) + (2 * lvl)
             elif s["id"] == "lifesteal":
-                player.lifesteal = getattr(player, 'lifesteal', 0) + 1 # 1% chance or 1 HP
-            elif s["id"] == "stamina": 
-                player.max_energy += 2.0
-                player.energy = player.max_energy
-            elif s["id"] == "buy_sp": 
-                player.skill_points += 1
+                player.lifesteal = getattr(player, 'lifesteal', 0) + (1 * lvl)
+            elif s["id"] == "stamina":
+                player.max_energy += 2.0 * lvl
+            elif s["id"] == "buy_sp":
+                pass  # Don't re-grant SP on load
             elif s["id"] == "chrono":
-                player.time_dilation = getattr(player, 'time_dilation', 1.0) - 0.05
-            elif s["id"] == "speed": 
-                player.speed += 0.4
-            elif s["id"] == "dash": 
+                player.time_dilation = getattr(player, 'time_dilation', 1.0) - (0.05 * lvl)
+            elif s["id"] == "speed":
+                player.speed += 0.4 * lvl
+            elif s["id"] == "dash":
                 player.dash_unlocked = True
             elif s["id"] == "dash_cd":
-                player.dash_cd_reduction = getattr(player, 'dash_cd_reduction', 0) + 10
-            elif s["id"] == "damage": 
-                player.damage += 0.5
-            elif s["id"] == "range": 
+                player.dash_cd_reduction = getattr(player, 'dash_cd_reduction', 0) + (10 * lvl)
+            elif s["id"] == "damage":
+                player.damage += 0.5 * lvl
+            elif s["id"] == "range":
                 if player.char_type == "dwarf":
-                    player.rotation_speed = getattr(player, 'rotation_speed', 15) + 3
+                    player.rotation_speed = getattr(player, 'rotation_speed', 15) + (3 * lvl)
                 else:
-                    player.attack_radius += 20
+                    player.attack_radius += 20 * lvl
             elif s["id"] == "multi":
-                player.projectile_count = getattr(player, 'projectile_count', 1) + 1
+                player.projectile_count = getattr(player, 'projectile_count', 1) + (1 * lvl)
             elif s["id"] == "crit":
-                player.crit_chance = getattr(player, 'crit_chance', 0) + 5 # +5% chance
-            
+                player.crit_chance = getattr(player, 'crit_chance', 0) + (5 * lvl)
+
             s["level"] = max(0, min(s["level"], s["max"]))
             if s["currency"] == "gold" and s["id"] != "buy_sp":
                 s["cost"] = int(s["cost"] * (1.5 ** lvl))
