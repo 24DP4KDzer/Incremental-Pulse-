@@ -47,7 +47,7 @@ class Player:
         self.max_energy = 10.0
         self.energy = 10.0
         
-        self.dash_unlocked = True
+        self.dash_unlocked = False
         self.dash_cooldown = 0
         self.magnet_range = 60 
         self.skill_points = 0

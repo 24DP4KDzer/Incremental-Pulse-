@@ -1,2 +1,4 @@
 name,char_type,money,max_health,radius,speed,damage,multi,aspeed,max_energy,sp,magnet,dash,highscore,skill_health,skill_armor,skill_thorns,skill_regen,skill_magnet,skill_greed,skill_knockback,skill_lifesteal,skill_stamina,skill_speed,skill_dash,skill_dash_cd,skill_damage,skill_range,skill_multi,skill_crit
-yes,wizard,79273,80.0,300,6.5,16.0,1,25,10.0,9979,60,0,1,0,0,0,0,0,0,0,0,0,10,1,5,10,10,3,10
+yes,wizard,79529,80.0,300,6.5,36.0,4,25,10.0,9981,60,1,4,0,0,0,0,0,0,0,0,0,10,1,5,10,10,3,10
+naw,wizard,37016,80.0,200.0,5.8999999999999995,700.0,1,25,10.0,99999990,60,1,4,0,0,0,0,0,0,0,0,0,3,1,5,0,0,0,0
+nay,wizard,31,80,200,5,1.0,1,25,10.0,0,60,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0

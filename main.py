@@ -13,6 +13,7 @@ from boss import Boss
 
 # 1. INITIALIZATION
 pygame.init()
+# Use (0,0) for Fullscreen or (1280, 720) for windowed testing
 screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
 screen_w, screen_h = screen.get_size()
 pygame.display.set_caption("Pulse: Evolution")
@@ -27,18 +28,15 @@ save_notification_timer = 0
 save_notification_msg = ""
 current_wave = 1
 
-# PERSISTENT SHROUD SURFACE (Prevents lag)
+# PERSISTENT SHROUD SURFACE
 shroud = pygame.Surface((screen_w, screen_h), pygame.SRCALPHA)
 
-# --- ADD BACKGROUND LOADING HERE ---
 try:
     bg_img = pygame.image.load("photos/bg.png").convert() 
     bg_img = pygame.transform.scale(bg_img, (screen_w, screen_h))
-    # Make it slightly darker so the lights pop more
     bg_img.set_alpha(180) 
 except:
     bg_img = None
-
 
 class MeleeSwing:
     def __init__(self, owner, enemies, damage):
@@ -177,17 +175,28 @@ shadow_ui = load_sprite("photos/Shadow_right.png")
 dwarf_ui = load_sprite("photos/yes.png")
 
 class Chest:
-    def __init__(self):
-        self.rect = pygame.Rect(random.randint(100, screen_w-100), random.randint(100, screen_h-100), 40, 40)
-        self.color = (255, 215, 0)
-    def draw(self, surface):
-        pygame.draw.rect(surface, self.color, self.rect)
-        pygame.draw.rect(surface, (255, 255, 255), self.rect, 2)
+    def __init__(self, x, y):
+        # Load image once or inside init with a try/except
+        try:
+            self.image = pygame.image.load("photos/chest.png").convert_alpha()
+            # Scale it to a good size (e.g., 45x45)
+            self.image = pygame.transform.scale(self.image, (45, 45))
+        except:
+            # Fallback if PNG is missing
+            self.image = pygame.Surface((40, 40))
+            self.image.fill((255, 215, 0)) # Gold color
 
+        self.rect = self.image.get_rect(topleft=(x, y))
+
+    def draw(self, surface):
+        surface.blit(self.image, self.rect)
+
+
+        
 game_state, user_name = "menu", ""
 player = Player()
 skills = SkillTree(screen_w, screen_h)
-bosses, enemies, projectiles, coins, chests, active_swings, sp, hp_drops = [], [], [], [], [], [], [], []
+bosses, enemies, projectiles, coins, chests, active_swings, special_coins, hp_drops = [], [], [], [], [], [], [], []
 boss_energy, boss_goal, max_enemies = 0, 100, 4
 time_freeze_timer = 0
 nuke_flash_timer = 0
@@ -208,48 +217,49 @@ def spawn_coin():
     c.rect.x, c.rect.y = random.randint(100, screen_w-100), random.randint(100, screen_h-100)
     coins.append(c)
 
-def spawn_sp():
-    sp = SpecialCoin()
-    sp.rect.x, sp.rect.y = random.randint(100, screen_w-100), random.randint(100, screen_h-100)
-    sp.append(c)
-
-
-def spawn_hp():
-    hp = HpCoin()
-    hp.rect.x, hp.rect.y = random.randint(100, screen_w-100), random.randint(100, screen_h-100)
-    hp.append(c)
-
-
 flicker_val = 0
 
+# --- MAIN LOOP ---
 while True:
     m_pos = pygame.mouse.get_pos()
     m_click = pygame.mouse.get_pressed()
     flicker_val += 0.08 
 
+    # 1. EVENT HANDLING
     for event in pygame.event.get():
         if event.type == pygame.QUIT: 
             pygame.quit(); sys.exit()
+        
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
                 if user_name and player.char_type: save_game_csv(user_name, player.char_type, player, skills)
                 pygame.quit(); sys.exit()
+            
             if game_state == "menu":
                 if event.key == pygame.K_RETURN and user_name.strip(): game_state = "char_select"
                 elif event.key == pygame.K_BACKSPACE: user_name = user_name[:-1]
                 else: user_name += event.unicode
+            
             elif game_state == "playing" and event.key == pygame.K_SPACE:
+                # --- FIXED DASH LOGIC ---
                 if getattr(player, 'dash_unlocked', False) and player.dash_cooldown <= 0:
                     k = pygame.key.get_pressed()
                     dx, dy = 0, 0
-                    if k[pygame.K_w]: dy = -130
-                    if k[pygame.K_s]: dy = 130
-                    if k[pygame.K_a]: dx = -130
-                    if k[pygame.K_d]: dx = 130
-                    if dx != 0 or dy != 0:
-                        player.rect.x += dx
-                        player.rect.y += dy
-                        player.dash_cooldown = 100 
+                    dist = 140
+                    
+                    if k[pygame.K_w]: dy = -dist
+                    if k[pygame.K_s]: dy = dist
+                    if k[pygame.K_a]: dx = -dist
+                    if k[pygame.K_d]: dx = dist
+                    
+                    # If standing still, dash in facing direction
+                    if dx == 0 and dy == 0:
+                        dx = dist if player.image == player.img_right else -dist
+                        
+                    player.rect.x += dx
+                    player.rect.y += dy
+                    player.rect.clamp_ip(screen.get_rect()) # Stay on screen
+                    player.dash_cooldown = 60 # 1 Second Cooldown
 
         if event.type == pygame.MOUSEBUTTONDOWN:
             if game_state == "char_select":
@@ -277,6 +287,7 @@ while True:
                     save_game_csv(user_name, player.char_type, player, skills)
                     trigger_save_anim("UPGRADED!")
 
+    # 2. STATE UPDATES & RENDERING
     if game_state == "menu":
         screen.fill((5, 5, 15))
         title = pygame.font.SysFont("Impact", 100).render("PULSE", True, (0, 255, 150))
@@ -300,18 +311,17 @@ while True:
             screen.blit(name_t, name_t.get_rect(center=(rect.centerx, rect.bottom - 45)))
 
     elif game_state == "playing":
-        # 1. DRAW BACKGROUND HERE (Always drawn every frame)
-        if bg_img:
-            screen.blit(bg_img, (0, 0))
-        else:
-            screen.fill((5, 5, 15))
+        if bg_img: screen.blit(bg_img, (0, 0))
+        else: screen.fill((5, 5, 15))
 
-        # 2. GAME LOGIC
-        if time_freeze_timer <= 0:
-            player.energy -= 1/60 
+        # --- TIMERS ---
+        if time_freeze_timer <= 0: player.energy -= 1/60 
+        if player.dash_cooldown > 0: player.dash_cooldown -= 1
+        if time_freeze_timer > 0: time_freeze_timer -= 1
+        if nuke_flash_timer > 0: nuke_flash_timer -= 1
+        if player.attack_cooldown > 0: player.attack_cooldown -= 1
         
         player.energy = max(0, min(player.energy, player.max_energy))
-        
         if player.energy <= 0 or player.health <= 0: 
             player.health = 0
             save_game_csv(user_name, player.char_type, player, skills)
@@ -321,11 +331,7 @@ while True:
         if player.health < player.max_health:
             player.health += getattr(player, 'regen', 0)
         
-        if player.dash_cooldown > 0: player.dash_cooldown -= 1
-        if time_freeze_timer > 0: time_freeze_timer -= 1
-        if nuke_flash_timer > 0: nuke_flash_timer -= 1
-        if player.attack_cooldown > 0: player.attack_cooldown -= 1
-
+        # --- WAVE LOGIC ---
         if not enemies and not bosses:
             current_wave += 1
             max_enemies += 2
@@ -333,11 +339,12 @@ while True:
             spd_scale = 1.0 + (current_wave * 0.05)
             for _ in range(max_enemies): spawn_enemy(hp_scale, spd_scale, current_wave)
             if current_wave % 2 == 0: chests.append(Chest())
-            trigger_save_anim(f"WAVE {current_wave}: ENEMIES EVOLVED")
+            trigger_save_anim(f"WAVE {current_wave}: EVOLVED")
 
         player.move(pygame.key.get_pressed())
         player.rect.clamp_ip(screen.get_rect())
 
+        # --- ITEM COLLECTION ---
         while len(coins) < 5: spawn_coin()
         for c in coins[:]:
             dist = math.hypot(player.rect.centerx - c.rect.centerx, player.rect.centery - c.rect.centery)
@@ -350,49 +357,40 @@ while True:
                 player.energy = min(player.max_energy, player.energy + 1.5)
                 coins.remove(c)
 
+        # FIXED SPECIAL COINS
+        if len(special_coins) < 1:
+            sc = SpecialCoin()
+            sc.rect.x, sc.rect.y = random.randint(100, screen_w-100), random.randint(100, screen_h-100)
+            special_coins.append(sc)
 
-
-        if len(sp) < 1:
-            new_coin = SpecialCoin() 
-            new_coin.rect.x = random.randint(100, screen_w - 100)
-            new_coin.rect.y = random.randint(100, screen_h - 100)
-            sp.append(new_coin)
-
-        for s in sp[:]:
-            # Use 's' (the individual coin), not 'c' or 'sp'
+        for s in special_coins[:]:
             dist = math.hypot(player.rect.centerx - s.rect.centerx, player.rect.centery - s.rect.centery)
             if dist < player.magnet_range:
                 s.rect.x += (player.rect.centerx - s.rect.centerx) * 0.1
                 s.rect.y += (player.rect.centery - s.rect.centery) * 0.1
-            
             s.draw(screen)
-            
             if player.rect.colliderect(s.rect):
                 player.money += int(5 * getattr(player, 'gold_modifier', 1.0))
                 player.energy = min(player.max_energy, player.energy + 3)
-                sp.remove(s)
-        
+                special_coins.remove(s)
 
-
+        # FIXED HP DROPS
         if len(hp_drops) < 1:
-            hp_coin = HpCoin()
-            hp_coin.rect.x = random.randint(100, screen_w - 100)
-            hp_coin.rect.y = random.randint(100, screen_h - 100)
-            hp_drops.append(hp_coin)
-        
+            hc = HpCoin()
+            hc.rect.x, hc.rect.y = random.randint(100, screen_w-100), random.randint(100, screen_h-100)
+            hp_drops.append(hc)
+
         for h in hp_drops[:]:
             dist = math.hypot(player.rect.centerx - h.rect.centerx, player.rect.centery - h.rect.centery)
             if dist < player.magnet_range:
                 h.rect.x += (player.rect.centerx - h.rect.centerx) * 0.1
                 h.rect.y += (player.rect.centery - h.rect.centery) * 0.1
             h.draw(screen)
-
             if player.rect.colliderect(h.rect):
                 player.health = min(player.max_health, player.health + 5)
-                player.energy = min(player.max_energy, player.energy + 1)
                 hp_drops.remove(h)
 
-
+        # --- CHESTS ---
         for ch in chests[:]:
             ch.draw(screen)
             if player.rect.colliderect(ch.rect):
@@ -404,6 +402,7 @@ while True:
                     for e in enemies[:]: e.health = 0
                 chests.remove(ch)
 
+        # --- ATTACKING ---
         if m_click[0] and player.attack_cooldown <= 0:
             if player.char_type == "dwarf":
                 active_swings.append(MeleeSwing(player, enemies + bosses, player.damage))
@@ -416,6 +415,7 @@ while True:
                     for i in range(min(len(targets), count)):
                         projectiles.append(Projectile(player.rect.centerx, player.rect.centery, targets[i], player.color, player.attack_radius * 1.5))
                     player.attack_cooldown = player.base_cooldown
+
         for s in active_swings[:]:
             s.update(); s.draw(screen)
             if s.lifetime <= 0: active_swings.remove(s)
@@ -424,8 +424,7 @@ while True:
             if p_obj.update(enemies + bosses):
                 p_obj.draw(screen)
                 if p_obj.rect.colliderect(p_obj.target.rect):
-                    enemy_armor = getattr(p_obj.target, 'armor', 0)
-                    dmg = max(1, player.damage - enemy_armor) 
+                    dmg = max(1, player.damage - getattr(p_obj.target, 'armor', 0)) 
                     if random.randint(1, 100) <= getattr(player, 'crit_chance', 0): dmg *= 2
                     p_obj.target.health -= dmg
                     if getattr(player, 'lifesteal', 0) > 0:
@@ -434,16 +433,14 @@ while True:
             else: 
                 if p_obj in projectiles: projectiles.remove(p_obj)
 
+        # --- ENEMIES & BOSSES ---
         dilation = getattr(player, 'time_dilation', 1.0)
         for e in enemies[:]:
             if time_freeze_timer <= 0:
                 e.update(player.rect, dilation) 
                 if player.rect.colliderect(e.rect):
-                    armor = getattr(player, 'armor', 0)
-                    dmg_in = max(0.15, 0.3 - (armor * 0.01))
-                    player.health -= dmg_in
-                    thorns = getattr(player, 'thorns', 0)
-                    if thorns > 0: e.health -= thorns
+                    player.health -= max(0.15, 0.3 - (getattr(player, 'armor', 0) * 0.01))
+                    if getattr(player, 'thorns', 0) > 0: e.health -= player.thorns
             e.draw(screen)
             if e.health <= 0: 
                 enemies.remove(e); player.money += 2; boss_energy += 10
@@ -452,9 +449,7 @@ while True:
             if time_freeze_timer <= 0:
                 b.update(player.rect, dilation)
                 if player.rect.colliderect(b.rect):
-                    armor = getattr(player, 'armor', 0)
-                    dmg_in = max(0.1, 0.8 - (armor * 0.05))
-                    player.health -= dmg_in
+                    player.health -= max(0.1, 0.8 - (getattr(player, 'armor', 0) * 0.05))
             b.draw(screen)
             if b.health <= 0: 
                 bosses.remove(b); player.money += 50; player.skill_points += 1; trigger_save_anim("+1 SP!")
@@ -465,40 +460,25 @@ while True:
 
         player.draw(screen) 
         
-        # --- BULLETPROOF SMOOTH DARKNESS SYSTEM ---
-        # 1. Clear shroud and set darkness (235 is very dark)
+        # --- DARKNESS SYSTEM ---
         shroud.fill((5, 5, 15, 235)) 
-        
-        # 2. Dynamic Radius with flicker
         pulse = int(6 * math.sin(flicker_val))
         light_radius = max(10, int(player.attack_radius * 1.4) + pulse)
-        
-        # 3. Create the smooth gradient hole
         t_surf = pygame.Surface((light_radius * 2, light_radius * 2), pygame.SRCALPHA)
-        
-        # Solid center core (prevents black lines)
         core_radius = max(1, light_radius // 2)
         pygame.draw.circle(t_surf, (0, 0, 0, 255), (light_radius, light_radius), core_radius)
-        
-        # Fade out (step of 1 for perfect smoothness)
         for r in range(light_radius, core_radius, -1):
-            # Calculate alpha and force it to be an integer between 0 and 255
-            raw_alpha = 255 * (1 - (r - core_radius) / max(1, light_radius - core_radius))
-            alpha = max(0, min(255, int(raw_alpha)))
+            alpha = max(0, min(255, int(255 * (1 - (r - core_radius) / max(1, light_radius - core_radius)))))
             pygame.draw.circle(t_surf, (0, 0, 0, alpha), (light_radius, light_radius), r)
-        
-        # 4. Subtract light from shroud and draw
         shroud.blit(t_surf, t_surf.get_rect(center=player.rect.center), special_flags=pygame.BLEND_RGBA_SUB)
         screen.blit(shroud, (0, 0))
         
-        # --- UI ELEMENTS (Drawn on top of darkness) ---
+        # --- UI ELEMENTS ---
         if nuke_flash_timer > 0:
             flash = pygame.Surface((screen_w, screen_h)); flash.fill((255,255,255))
             flash.set_alpha(int((nuke_flash_timer/15)*255)); screen.blit(flash, (0,0))
         if time_freeze_timer > 0:
             screen.blit(freeze_surf, (0, 0))
-            ui_freeze = pygame.font.SysFont("Impact", 40).render("TIME FROZEN!", True, (0, 200, 255))
-            screen.blit(ui_freeze, ui_freeze.get_rect(center=(screen_w//2, 100)))
 
         ui_f = pygame.font.SysFont("Consolas", 22, bold=True)
         screen.blit(ui_f.render(f"GOLD: ${player.money} | SP: {player.skill_points}", True, (255, 215, 0)), (20, 20))
@@ -510,7 +490,7 @@ while True:
         pygame.draw.rect(screen, (0, 255, 120), (bar_x, bar_y + 15, max(0, (player.health/player.max_health)*200), 15))
 
     elif game_state == "dead":
-        screen.fill((5, 5, 15)) # Added fill here so text doesn't smear
+        screen.fill((5, 5, 15))
         msg = pygame.font.SysFont("Impact", 100).render("OUT OF TIME", True, (255, 0, 0))
         screen.blit(msg, msg.get_rect(center=(screen_w//2, screen_h//2)))
         death_timer -= 1

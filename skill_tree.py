@@ -17,38 +17,38 @@ class SkillTree:
         col1, col2, col3, col4, col5 = cx - 550, cx - 275, cx, cx + 275, cx + 550
         row1, row2, row3, row4 = cy - 250, cy - 80, cy + 90, cy + 260
 
+        # --- SKILL DEFINITIONS ---
         self.skills = [
-           # --- COLUMN 1: DEFENSE ---
+            # COLUMN 1: DEFENSE
             {"id": "health", "name": "MAX HEALTH", "pos": (col1, row1), "cost": 48, "level": 0, "max": 10, "color": (255, 60, 60), "req": None, "currency": "gold"},
             {"id": "armor", "name": "ARMOR", "pos": (col1, row2), "cost": 55, "level": 0, "max": 10, "color": (120, 120, 120), "req": "health", "currency": "gold"},
             {"id": "thorns", "name": "THORN DAMAGE", "pos": (col1, row3), "cost": 3, "level": 0, "max": 5, "color": (34, 139, 34), "req": "armor", "currency": "sp"},
             {"id": "regen", "name": "HP REGEN", "pos": (col1, row4), "cost": 4, "level": 0, "max": 5, "color": (255, 105, 180), "req": "health", "currency": "sp"},
 
-            # --- COLUMN 2: UTILITY ---
+            # COLUMN 2: UTILITY
             {"id": "magnet", "name": "COIN MAGNET", "pos": (col2, row1), "cost": 35, "level": 0, "max": 10, "color": (100, 100, 255), "req": None, "currency": "gold"},
             {"id": "greed", "name": "EXTRA GOLD", "pos": (col2, row2), "cost": 3, "level": 0, "max": 5, "color": (255, 215, 0), "req": "magnet", "currency": "sp"},
             {"id": "knockback", "name": "KNOCKBACK", "pos": (col2, row3), "cost": 45, "level": 0, "max": 8, "color": (200, 200, 200), "req": "greed", "currency": "gold"},
             {"id": "lifesteal", "name": "LIFE STEAL", "pos": (col2, row4), "cost": 4, "level": 0, "max": 5, "color": (150, 0, 0), "req": "knockback", "currency": "sp"},
 
-            # --- COLUMN 3: CORE ---
+            # COLUMN 3: CORE
             {"id": "stamina", "name": "MAX ENERGY", "pos": (col3, row1), "cost": 60, "level": 0, "max": 15, "color": (0, 255, 255), "req": None, "currency": "gold"},
-            
 
-            # --- COLUMN 4: MOVEMENT ---
+            # COLUMN 4: MOVEMENT
             {"id": "speed", "name": "MOVE SPEED", "pos": (col4, row1), "cost": 40, "level": 0, "max": 10, "color": (50, 255, 150), "req": None, "currency": "gold"},
             {"id": "dash", "name": "UNLOCK DASH", "pos": (col4, row2), "cost": 2, "level": 0, "max": 1, "color": (255, 0, 150), "req": "speed", "currency": "sp"},
             {"id": "dash_cd", "name": "DASH COOLDOWN", "pos": (col4, row3), "cost": 2, "level": 0, "max": 5, "color": (255, 100, 200), "req": "dash", "currency": "sp"},
 
-            # --- COLUMN 5: OFFENSE ---
+            # COLUMN 5: OFFENSE
             {"id": "damage", "name": "ATTACK POWER", "pos": (col5, row1), "cost": 54, "level": 0, "max": 10, "color": (255, 150, 50), "req": None, "currency": "gold"},
             {"id": "range", "name": "ATTACK RANGE", "pos": (col5, row2), "cost": 40, "level": 0, "max": 10, "color": (255, 220, 50), "req": "damage", "currency": "gold"},
             {"id": "multi", "name": "MULTI-PROJECTILE", "pos": (col5, row3), "cost": 3, "level": 0, "max": 3, "color": (255, 255, 100), "req": "damage", "currency": "sp"},
             {"id": "crit", "name": "CRIT CHANCE", "pos": (col5, row4), "cost": 50, "level": 0, "max": 10, "color": (255, 0, 0), "req": "multi", "currency": "gold"},
         ]
         
-        # PRE-LINK FOR PERFORMANCE
         for s in self.skills:
             s["req_node"] = next((n for n in self.skills if n["id"] == s["req"]), None) if s["req"] else None
+            s["base_cost"] = s["cost"] # Keep track for scaling
 
         self.respawn_btn = pygame.Rect(screen_w//2 - 90, screen_h - 75, 180, 45)
         self.vignette = self._create_vignette()
@@ -61,29 +61,81 @@ class SkillTree:
         return surf.convert_alpha()
 
     def sync_with_player(self, player):
-        """Standardizes stats. Range and Multi have HARD CAPS to stop lag."""
+        """Applies saved levels to player stats on game load."""
         for s in self.skills:
             lvl = s["level"]
             if lvl <= 0: continue
             
             if s["id"] == "health": player.max_health += 20 * lvl
-            elif s["id"] == "range": 
-                # 250px is the stability limit for Pygame targeting
-                player.attack_radius = min(300, player.attack_radius + (15 * lvl))
-            elif s["id"] == "multi": 
-                # 5 projectiles is the limit for physics stability
-                player.projectiles_count = min(5, 1 + lvl)
-            elif s["id"] == "speed": 
-                player.speed = min(6.5, player.speed + (0.4 * lvl))
-            elif s["id"] == "damage": 
-                player.damage += 0.5 * lvl
-            elif s["id"] == "magnet": 
-                player.magnet_range = min(300, player.magnet_range + (15 * lvl))
+            elif s["id"] == "armor": player.armor = getattr(player, 'armor', 0) + lvl
+            elif s["id"] == "thorns": player.thorns = getattr(player, 'thorns', 0) + lvl
+            elif s["id"] == "regen": player.regen = getattr(player, 'regen', 0) + (0.01 * lvl)
+            elif s["id"] == "range": player.attack_radius = min(300, player.attack_radius + (15 * lvl))
+            elif s["id"] == "multi": player.projectile_count = min(5, 1 + lvl)
+            elif s["id"] == "speed": player.speed = min(6.5, player.speed + (0.4 * lvl))
+            elif s["id"] == "damage": player.damage += 0.5 * lvl
+            elif s["id"] == "magnet": player.magnet_range = min(300, player.magnet_range + (15 * lvl))
+            elif s["id"] == "dash": player.dash_unlocked = True
+            elif s["id"] == "stamina": player.max_energy += 5 * lvl
+            elif s["id"] == "crit": player.crit_chance = getattr(player, 'crit_chance', 0) + (5 * lvl)
+            elif s["id"] == "lifesteal": player.lifesteal = getattr(player, 'lifesteal', 0) + lvl
 
             if s["currency"] == "gold":
-                s["cost"] = int(s["cost"] * (1.5 ** lvl))
+                s["cost"] = int(s["base_cost"] * (1.5 ** lvl))
 
-        player.health, player.energy = player.max_health, player.max_energy
+        player.health = player.max_health
+        player.energy = player.max_energy
+
+    def handle_click(self, pos, player):
+        if self.respawn_btn.collidepoint(pos): return "respawn"
+        
+        for s in self.skills:
+            if math.hypot(pos[0]-s["pos"][0], pos[1]-s["pos"][1]) < self.circle_radius:
+                if s["level"] >= s["max"]: continue
+                if s["req_node"] and s["req_node"]["level"] < 1: continue
+
+                # Check Currency
+                if s["currency"] == "gold":
+                    if player.money >= s["cost"]: player.money -= s["cost"]
+                    else: continue
+                elif s["currency"] == "sp":
+                    if player.skill_points >= s["cost"]: player.skill_points -= s["cost"]
+                    else: continue
+
+                # Upgrade Level
+                s["level"] += 1
+
+                # --- IMMEDIATE PLAYER UPDATES ---
+                if s["id"] == "health":
+                    player.max_health += 20
+                    player.health += 20
+                elif s["id"] == "armor":
+                    player.armor = getattr(player, 'armor', 0) + 1
+                elif s["id"] == "regen":
+                    player.regen = getattr(player, 'regen', 0) + 0.01
+                elif s["id"] == "range":
+                    player.attack_radius = min(300, player.attack_radius + 15)
+                elif s["id"] == "multi":
+                    player.projectile_count = min(5, getattr(player, 'projectile_count', 1) + 1)
+                elif s["id"] == "damage":
+                    player.damage += 0.5
+                elif s["id"] == "speed":
+                    player.speed = min(6.5, player.speed + 0.3)
+                elif s["id"] == "magnet":
+                    player.magnet_range = min(300, player.magnet_range + 15)
+                elif s["id"] == "dash":
+                    player.dash_unlocked = True
+                elif s["id"] == "stamina":
+                    player.max_energy += 5
+                elif s["id"] == "crit":
+                    player.crit_chance = getattr(player, 'crit_chance', 0) + 5
+                
+                # Scale Cost
+                if s["currency"] == "gold":
+                    s["cost"] = int(s["cost"] * 1.5)
+                
+                return "saved"
+        return None
 
     def draw_connection(self, surface, start, end, active):
         col = (180, 180, 255, 150) if active else (40, 40, 50, 80)
@@ -111,7 +163,6 @@ class SkillTree:
             pygame.draw.circle(screen, (30, 30, 45) if not is_hovered else (55, 55, 80), (x, y), radius)
             pygame.draw.circle(screen, s["color"], (x, y), radius, 2)
 
-            # Optimization: Pre-calculate Pi
             for i in range(s["max"]):
                 dot_col = s["color"] if i < s["level"] else (60, 60, 60)
                 angle = (i / s["max"]) * 6.283 - 1.57
@@ -132,31 +183,3 @@ class SkillTree:
         pygame.draw.rect(screen, (0, 255, 150), self.respawn_btn, border_radius=12)
         btn_txt = self.title_font.render("RESUME", True, (0,0,0))
         screen.blit(btn_txt, btn_txt.get_rect(center=self.respawn_btn.center))
-
-    def handle_click(self, pos, player):
-        if self.respawn_btn.collidepoint(pos): return "respawn"
-        for s in self.skills:
-            if math.hypot(pos[0]-s["pos"][0], pos[1]-s["pos"][1]) < self.circle_radius:
-                if s["level"] >= s["max"]: continue
-                if s["req_node"] and s["req_node"]["level"] < 1: continue
-
-                if s["currency"] == "gold" and player.money >= s["cost"]: player.money -= s["cost"]
-                elif s["currency"] == "sp" and player.skill_points >= s["cost"]: player.skill_points -= s["cost"]
-                else: continue
-
-                s["level"] += 1
-
-                # IMPACT STATS WITH SAFETY CAPS
-                if s["id"] == "range":
-                    player.attack_radius = min(250, player.attack_radius + 15)
-                elif s["id"] == "multi":
-                    player.projectiles_count = min(5, getattr(player, 'projectiles_count', 1) + 1)
-                elif s["id"] == "damage":
-                    player.damage += 0.5
-                elif s["id"] == "speed":
-                    player.speed = min(6.5, player.speed + 0.3)
-                
-                if s["currency"] == "gold":
-                    s["cost"] = int(s["cost"] * 1.5)
-                return "saved"
-        return None
