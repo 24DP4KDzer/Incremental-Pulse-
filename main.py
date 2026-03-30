@@ -30,6 +30,17 @@ current_wave = 1
 # PERSISTENT SHROUD SURFACE (Prevents lag)
 shroud = pygame.Surface((screen_w, screen_h), pygame.SRCALPHA)
 
+# --- ADD BACKGROUND LOADING HERE ---
+try:
+    # Replace "photos/bg.png" with your actual file path
+    bg_img = pygame.image.load("photos/bg.png").convert() 
+    bg_img = pygame.transform.scale(bg_img, (screen_w, screen_h))
+    # Optional: Make it slightly darker so the lights pop more
+    bg_img.set_alpha(180) 
+except:
+    bg_img = None
+
+
 class MeleeSwing:
     def __init__(self, owner, enemies, damage):
         self.owner = owner
@@ -199,8 +210,8 @@ def spawn_coin():
     coins.append(c)
 
 flicker_val = 0
+
 while True:
-    screen.fill((5, 5, 15)) 
     m_pos = pygame.mouse.get_pos()
     m_click = pygame.mouse.get_pressed()
     flicker_val += 0.08 
@@ -256,12 +267,14 @@ while True:
                     trigger_save_anim("UPGRADED!")
 
     if game_state == "menu":
+        screen.fill((5, 5, 15))
         title = pygame.font.SysFont("Impact", 100).render("PULSE", True, (0, 255, 150))
         screen.blit(title, title.get_rect(center=(screen_w//2, screen_h//2 - 50)))
         u_txt = pygame.font.SysFont("Arial", 30).render(f"User: {user_name}|", True, (255, 255, 255))
         screen.blit(u_txt, u_txt.get_rect(center=(screen_w//2, screen_h//2 + 50)))
 
     elif game_state == "char_select":
+        screen.fill((10, 10, 20))
         title = pygame.font.SysFont("Impact", 60).render("SELECT CHARACTER", True, (255, 255, 255))
         screen.blit(title, (screen_w//2 - title.get_width()//2, 80))
         classes = [("WIZARD", (0, 200, 255), wizard_ui), ("SHADOW", (150, 0, 255), shadow_ui), ("DWARF", (255, 150, 0), dwarf_ui)]
@@ -276,6 +289,13 @@ while True:
             screen.blit(name_t, name_t.get_rect(center=(rect.centerx, rect.bottom - 45)))
 
     elif game_state == "playing":
+        # 1. DRAW BACKGROUND HERE (Always drawn every frame)
+        if bg_img:
+            screen.blit(bg_img, (0, 0))
+        else:
+            screen.fill((5, 5, 15))
+
+        # 2. GAME LOGIC
         if time_freeze_timer <= 0:
             player.energy -= 1/60 
         
@@ -366,7 +386,7 @@ while True:
                 e.update(player.rect, dilation) 
                 if player.rect.colliderect(e.rect):
                     armor = getattr(player, 'armor', 0)
-                    dmg_in = max(0.15, 0.3 - (armor * 0.01))  # FIX: softer reduction, higher floor
+                    dmg_in = max(0.15, 0.3 - (armor * 0.01))
                     player.health -= dmg_in
                     thorns = getattr(player, 'thorns', 0)
                     if thorns > 0: e.health -= thorns
@@ -436,6 +456,7 @@ while True:
         pygame.draw.rect(screen, (0, 255, 120), (bar_x, bar_y + 15, max(0, (player.health/player.max_health)*200), 15))
 
     elif game_state == "dead":
+        screen.fill((5, 5, 15)) # Added fill here so text doesn't smear
         msg = pygame.font.SysFont("Impact", 100).render("OUT OF TIME", True, (255, 0, 0))
         screen.blit(msg, msg.get_rect(center=(screen_w//2, screen_h//2)))
         death_timer -= 1
