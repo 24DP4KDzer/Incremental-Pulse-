@@ -1,236 +1,57 @@
-# Incremental Pulse
+# 🌀 Pulse: Evolution
+> "The light is your life. Don't let the pulse fade."
 
-A terminal-based incremental adventure game where every action takes **10 seconds**, and every decision shapes your progression.
-
----
-
-## 🎮 Overview
-
-**Pulse** is a simple but engaging incremental game where the player performs timed actions, gains rewards, and invests them into a **skill tree system**.
+A high-intensity, top-down survival roguelike built in **Python** and **Pygame**. Navigate a world of encroaching shadows, manage your energy, and evolve through a persistent skill tree.
 
 ---
 
-## 🔁 Core Gameplay Loop
-
-Choose Action → Wait 10s → Gain Rewards → Upgrade Skills → Repeat
-
-- Perform actions
-- Earn XP, coins, and materials
-- Unlock skills
-- Become stronger over time
+## 🕹️ Core Gameplay
+* **The Shroud System:** A dynamic, smooth darkness system where safety only exists within your light's radius.
+* **Energy Survival:** Your energy constantly drains. Kill enemies and collect coins to fuel your pulse.
+* **Wave Evolution:** Enemies scale in speed, health, and armor every wave.
+* **Persistent Saves:** Highscores, currency, and skill levels are saved to `players.csv`.
 
 ---
 
-## ⚔️ Actions
-
-Each action takes **10 seconds** and provides different rewards.
-
-### Available Actions
-
-- 💪 Train Strength
-- ⛏️ Mine Stone
-- 🐍 Hunt Slime
-- 🌲 Explore Forest
-- 🧠 Study Magic
-
-### Rewards
-
-- ⭐ XP (experience points)
-- 💰 Coins (currency)
-- 🧱 Materials (resources)
+## 🎭 Character Classes
+* **Wizard:** Ranged specialist with high-energy projectiles.
+* **Shadow:** High-speed assassin with critical strike scaling.
+* **Dwarf:** Melee powerhouse featuring a 360° axe swing.
 
 ---
 
-## 🌳 Skill Tree
-
-The skill tree allows players to upgrade their abilities and improve efficiency.
-
-### Skill Paths
-
-#### 💥 Strength Path
-- Increase damage output
-
-#### 💰 Resource Path
-- Boost coin and material gain
-
-#### 📚 XP Path
-- Increase XP gain
-
-#### ⚡ Speed Path
-- Improve action efficiency
-- Potential future cooldown reduction
+## 🌳 Skill Tree Paths
+* **💥 Combat:** Boost base damage and critical hit chance.
+* **💰 Utility:** Increase gold gain and magnet collection range.
+* **⚡ Agility:** Unlock dashing and movement speed buffs.
+* **🛡️ Survival:** Enhance max health, armor, and life-regen.
 
 ---
 
-## 🧩 Terminal Interface Example
-
----
-==== 10 Second Quest ====
-
-- Create player
-- Show player
-- Start action
-- Collect rewards
-- Show inventory
-- Show skill tree
-- Unlock skill
-- Exit
-
-
-### Action Example
-Choose action:
-
-- Train Strength
-- Mine Stone
-- Hunt Slime
-
-Action started...
-Wait 10 seconds...
-
-Action complete!
-You gained:
-+15 XP
-+10 Coins
-+3 Materials
-
+## 🛠️ Technical Specs
+* **Language:** Python 3.x
+* **Library:** Pygame
+* **Storage:** CSV-based flat-file database for player progression.
+* **Architecture:** Modular class-based design (`Player`, `Enemy`, `SkillTree`, `Boss`).
 
 ---
 
-## 🗂️ Data Storage (CSV)
-
-The game uses CSV files for data persistence.
-
-### players.csv
-- player_id
-- name
-- level
-- xp
-- coins
-
-### actions.csv
-- action_id
-- action_name
-- duration
-- xp_reward
-- coin_reward
-- resource_reward
-
-### skills.csv
-- skill_id
-- skill_name
-- skill_type
-- cost
-- bonus_value
-- required_skill_id
-
-### inventory.csv
-- inventory_id
-- player_id
-- resource_name
-- quantity
-
----
-
-## 🏗️ Classes
-
-### Player
-Handles player data and progression.
-
-### Action
-Manages timed actions and rewards.
-
-### SkillTree
-Handles skill unlocking and bonuses.
-
-### Inventory
-Manages player resources.
-
----
-
-## 🔧 Features
-
-- ⏱️ Timed actions (10 seconds)
-- 📈 Incremental progression
-- 🌳 Skill tree system
-- 💾 CSV-based data storage
-- 🖥️ Terminal interface
-
----
-
-## 🧪 Functionality Overview
-
-Each class includes CRUD operations and gameplay logic.
-
-### Player (8 functions)
-- add_player
-- get_players
-- get_player_by_id
-- update_player
-- delete_player
-- find_player_by_name
-- add_xp
-- add_coins
-
-### Action (8 functions)
-- add_action
-- get_actions
-- get_action_by_id
-- update_action
-- delete_action
-- start_action
-- complete_action
-- filter_actions_by_reward
-
-### SkillTree (8 functions)
-- add_skill
-- get_skills
-- get_skill_by_id
-- update_skill
-- delete_skill
-- unlock_skill
-- check_skill_requirements
-- get_unlocked_skills
-
-### Inventory (8 functions)
-- add_resource
-- get_inventory
-- get_resource_by_name
-- update_resource_quantity
-- delete_resource
-- collect_reward
-- filter_resources
-- resource_exists
-
----
-
-## 🚀 Future Improvements
-
-- 🎲 Random reward bonuses
-- 💎 Resource rarity system
-- 📈 Level system
-- 👹 Boss fights
-- 🔓 Unlockable actions
-- ♻️ Prestige system
-
----
-
-## ▶️ Getting Started
-
+## 🚀 Installation & Play
 ```bash
-    git clone https://github.com/your-username/10-second-quest.git
-    cd 10-second-quest
-    python main.py
-```
+# Clone the repo
+"git clone [https://github.com/24DP4KDzer/Incremental-Pulse-)"
 
+# Install python 3.12
 
----
-## 📄 Project Description
+"winget install -e --id Python.Python.3.12"
 
-This project is a terminal-based incremental game where the player performs timed actions, earns rewards, and invests them into a skill tree progression system.
+#Check the verion
 
-## 📜 License
-  MIT License
+"python --version"
 
+#Install pygame
+"python -m pip install pygame"
 
+# Launch the game
 
-# 💡 "You only have 10 seconds. What will you do with them?"
+"py -3.12 c:\Users\**user**\Documents\Incremental-Pulse-\main.py"

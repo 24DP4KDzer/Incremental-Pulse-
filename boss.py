@@ -1,19 +1,25 @@
 import pygame
 import random
+import math
 
 class Boss:
     def __init__(self, screen_w, screen_h):
         self.width, self.height = 250, 250
         self.rect = pygame.Rect(random.randint(0, screen_w-250), random.randint(0, screen_h-250), self.width, self.height)
-        self.max_health = 150 # Absolute Tank
+        self.max_health = 150 # veri big hp
         self.health = self.max_health
         self.speed = 1.0 
 
-    def update(self, player_rect):
-        if self.rect.centerx < player_rect.centerx: self.rect.x += self.speed
-        if self.rect.centerx > player_rect.centerx: self.rect.x -= self.speed
-        if self.rect.centery < player_rect.centery: self.rect.y += self.speed
-        if self.rect.centery > player_rect.centery: self.rect.y -= self.speed
+    def update(self, player_rect, dilation=1.0):
+        # Calculate direction to player
+        dx = player_rect.centerx - self.rect.centerx
+        dy = player_rect.centery - self.rect.centery
+        dist = math.hypot(dx, dy)
+
+        if dist != 0:
+            #boss Slower
+            self.rect.x += (dx / dist) * self.speed * dilation
+            self.rect.y += (dy / dist) * self.speed * dilation
 
     def draw(self, screen):
         # Boss Body
