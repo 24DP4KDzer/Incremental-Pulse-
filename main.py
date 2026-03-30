@@ -38,7 +38,6 @@ def save_game_csv(name, char_type, p, s_tree):
         with open(PLAYER_FILE, 'r', newline='') as f:
             p_rows = list(csv.DictReader(f))
     
-    # Check if current wave is higher than the stored highscore
     current_record = getattr(p, 'highscore', 1)
     if globals().get('current_wave', 1) > current_record:
         p.highscore = globals().get('current_wave', 1)
@@ -53,7 +52,7 @@ def save_game_csv(name, char_type, p, s_tree):
         "sp": getattr(p, 'skill_points', 0),
         "magnet": getattr(p, 'magnet_range', 60),
         "dash": int(getattr(p, 'dash_unlocked', False)),
-        "highscore": getattr(p, 'highscore', 1) # NEW FIELD
+        "highscore": getattr(p, 'highscore', 1)
     }
     
     found_p = False
@@ -77,7 +76,6 @@ def load_game_csv(name, char_type, p, s_tree):
                 if row["name"] == name and row["char_type"] == char_type:
                     def s_i(k, d): return int(row[k]) if row.get(k) and row[k].strip() else d
                     def s_f(k, d): return float(row[k]) if row.get(k) and row[k].strip() else d
-                    def s_i(k, d): return int(row[k]) if row.get(k) and row[k].strip() else d
                     p.money = s_i("money", 0)
                     p.max_health = s_f("max_health", 100.0)
                     p.attack_radius = s_f("radius", 100.0)
@@ -91,58 +89,51 @@ def load_game_csv(name, char_type, p, s_tree):
                     p.dash_unlocked = bool(s_i("dash", 0))
                     p.energy = p.max_energy
                     p.highscore = s_i("highscore", 1)
-                    # SYNC THE SKILL TREE UI WITH THE LOADED STATS
                     s_tree.sync_with_player(p)
 
-# 3. SPRITES
-def load_sprite(path, size=(60, 60)):
+# 3. SPRITES (Main Menu / Selection only)
+def load_sprite(path, size=(320, 320)):
     try:
         img = pygame.image.load(path).convert_alpha()
         return pygame.transform.scale(img, size)
     except:
         surf = pygame.Surface(size)
-        surf.fill((255, 0, 255))
+        surf.fill((255, 0, 255)) 
         return surf
 
-wizard_img = load_sprite("image_5d21e5.png") 
-shadow_img = load_sprite("image_5d25a6.png")
-dwarf_img = load_sprite("image_5d25fd.png")
+# Pre-loading for the Character Select screen
+wizard_ui = load_sprite("photos/pixil-frame-going-right.png") 
+shadow_ui = load_sprite("photos/wizard_left.png") 
+dwarf_ui = load_sprite("photos/pixil-frame-going-up.png")
+
+class Chest:
+    def __init__(self):
+        self.rect = pygame.Rect(random.randint(200, screen_w-200), random.randint(200, screen_h-200), 40, 40)
+    def draw(self, surf):
+        pygame.draw.rect(surf, (255, 215, 0), self.rect, border_radius=8)
+        pygame.draw.rect(surf, (255, 255, 255), self.rect, 2, border_radius=8)
 
 # 4. GAME OBJECTS
 game_state, user_name = "menu", ""
 player = Player()
 skills = SkillTree(screen_w, screen_h)
-bosses, enemies, projectiles, coins, special_coins, hp_coins = [], [], [], [], [], []
+bosses, enemies, projectiles, coins, chests = [], [], [], [], []
 boss_energy, boss_goal, max_enemies = 0, 100, 4
 
 darkness_surf = pygame.Surface((screen_w, screen_h))
 darkness_surf.fill((0, 0, 0))
 
-def spawn_enemy(hp_mult=1.0, speed_mult=1.0):
+def spawn_enemy(hp_m=1.0, spd_m=1.0):
     e = Enemy(random.randint(0, screen_w), random.randint(0, screen_h))
-    e.max_health = int(e.max_health * hp_mult)
+    e.max_health = int(e.max_health * hp_m)
     e.health = e.max_health
-    e.speed = min(3.5, e.speed * speed_mult)
+    e.speed = min(3.5, e.speed * spd_m)
     enemies.append(e)
 
 def spawn_coin():
     c = Coin()
     c.rect.x, c.rect.y = random.randint(100, screen_w-100), random.randint(100, screen_h-100)
     coins.append(c)
-
-def spawn_special():
-    sc = SpecialCoin()
-    sc.rect.x, sc.rect.y = random.randint(100, screen_w-100), random.randint(100, screen_h-100)
-    special_coins.append(sc)
-
-def spawn_hp():
-    hc = HpCoin()
-    hc.rect.x, hc.rect.y = random.randint(100, screen_w-100), random.randint(100, screen_h-100)
-    hp_coins.append(hc)
-
-for _ in range(5): spawn_coin()
-
-for l in range(3): spawn_hp()
 
 # --- MAIN LOOP ---
 while True:
@@ -155,21 +146,13 @@ while True:
         
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
-                # Save the game before closing if a user is logged in
-                if user_name and player.char_type:
-                    save_game_csv(user_name, player.char_type, player, skills)
-                    print(f"Progress for {user_name} saved. Goodbye!")
-                
-                pygame.quit()
-                sys.exit()
+                if user_name and player.char_type: save_game_csv(user_name, player.char_type, player, skills)
+                pygame.quit(); sys.exit()
             
             if game_state == "menu":
-                if event.key == pygame.K_RETURN and user_name.strip(): 
-                    game_state = "char_select"
-                elif event.key == pygame.K_BACKSPACE: 
-                    user_name = user_name[:-1]
-                else: 
-                    user_name += event.unicode
+                if event.key == pygame.K_RETURN and user_name.strip(): game_state = "char_select"
+                elif event.key == pygame.K_BACKSPACE: user_name = user_name[:-1]
+                else: user_name += event.unicode
             
             elif game_state == "char_select":
                 sel = None
@@ -179,35 +162,34 @@ while True:
                 if sel:
                     player.setup_class(sel)
                     load_game_csv(user_name, sel, player, skills)
-                    enemies.clear(); bosses.clear(); projectiles.clear()
-                    current_wave = 1
-                    max_enemies = 4
+                    enemies.clear(); bosses.clear(); projectiles.clear(); coins.clear(); chests.clear()
+                    current_wave, max_enemies = 1, 4
                     for _ in range(max_enemies): spawn_enemy()
                     game_state = "playing"
             
             elif game_state == "playing" and event.key == pygame.K_SPACE:
-                if getattr(player, 'dash_unlocked', False) and getattr(player, 'dash_cooldown', 0) <= 0:
-                    keys = pygame.key.get_pressed()
+                if player.dash_unlocked and player.dash_cooldown <= 0:
+                    k = pygame.key.get_pressed()
                     dx, dy = 0, 0
-                    if keys[pygame.K_w]: dy = -120
-                    if keys[pygame.K_s]: dy = 120
-                    if keys[pygame.K_a]: dx = -120
-                    if keys[pygame.K_d]: dx = 120
-                    player.rect.x += dx
-                    player.rect.y += dy
-                    player.dash_cooldown = 120 
+                    if k[pygame.K_w]: dy = -130
+                    if k[pygame.K_s]: dy = 130
+                    if k[pygame.K_a]: dx = -130
+                    if k[pygame.K_d]: dx = 130
+                    if dx != 0 or dy != 0:
+                        player.rect.x += dx
+                        player.rect.y += dy
+                        player.dash_cooldown = 100 
 
         if event.type == pygame.MOUSEBUTTONDOWN:
             if game_state == "skill_tree":
-                result = skills.handle_click(event.pos, player)
-                if result:
+                res = skills.handle_click(event.pos, player)
+                if res:
                     save_game_csv(user_name, player.char_type, player, skills)
-                    if result == "respawn":
+                    if res == "respawn":
                         player.health, player.energy = player.max_health, player.max_energy
-                        enemies.clear(); bosses.clear(); projectiles.clear(); coins.clear(); special_coins.clear()
+                        enemies.clear(); bosses.clear(); projectiles.clear(); coins.clear(); chests.clear()
                         current_wave, max_enemies = 1, 4
                         for _ in range(max_enemies): spawn_enemy()
-                        for _ in range(5): spawn_coin()
                         game_state = "playing"
 
     if game_state == "menu":
@@ -219,69 +201,67 @@ while True:
     elif game_state == "char_select":
         title = pygame.font.SysFont("Impact", 60).render("SELECT CHARACTER", True, (255, 255, 255))
         screen.blit(title, (screen_w//2 - title.get_width()//2, 100))
-        classes = [("1. WIZARD", (0, 200, 255), wizard_img), ("2. SHADOW", (150, 0, 255), shadow_img), ("3. DWARF", (255, 150, 0), dwarf_img)]
+        classes = [("1. WIZARD", (0, 200, 255), wizard_ui), ("2. SHADOW", (150, 0, 255), shadow_ui), ("3. DWARF", (255, 150, 0), dwarf_ui)]
         for i, (name, col, img) in enumerate(classes):
             rect = pygame.Rect(screen_w//2 - 450 + (i * 320), 250, 250, 350)
             pygame.draw.rect(screen, (20, 20, 30), rect, border_radius=15)
             pygame.draw.rect(screen, col, rect, 3, border_radius=15)
-            screen.blit(img, (rect.centerx - 30, rect.y + 50)) 
+            screen.blit(img, (rect.centerx - 40, rect.y + 50)) 
             name_t = pygame.font.SysFont("Arial", 28, bold=True).render(name, True, col)
             screen.blit(name_t, name_t.get_rect(center=(rect.centerx, rect.y + 300)))
 
     elif game_state == "playing":
+        # --- LOGIC ---
         player.energy -= 1/60 
         if player.energy <= 0: player.health = 0
-        if getattr(player, 'dash_cooldown', 0) > 0: player.dash_cooldown -= 1
+        if player.dash_cooldown > 0: player.dash_cooldown -= 1
 
         if not enemies and not bosses:
             current_wave += 1
-            max_enemies += 2 + (current_wave // 5)
-            hp_m = 1.0 + (current_wave * 0.1)
-            speed_m = 1.0 + (current_wave * 0.05)
-            for _ in range(max_enemies): spawn_enemy(hp_m, speed_m)
-            boss_goal = 100 + (current_wave * 15)
-            trigger_save_anim(f"WAVE {current_wave} START")
+            max_enemies += 2
+            for _ in range(max_enemies): spawn_enemy(1.0 + (current_wave*0.1), 1.0 + (current_wave*0.02))
+            if current_wave % 2 == 0: chests.append(Chest())
+            trigger_save_anim(f"WAVE {current_wave}")
 
         player.move(pygame.key.get_pressed())
         player.rect.clamp_ip(screen.get_rect())
 
         while len(coins) < 5: spawn_coin()
         
-        m_range = getattr(player, 'magnet_range', 60)
-        for c in coins + special_coins:
+        # Magnet Logic
+        for c in coins:
             dist = math.hypot(player.rect.centerx - c.rect.centerx, player.rect.centery - c.rect.centery)
-            if dist < m_range:
+            if dist < player.magnet_range:
                 c.rect.x += (player.rect.centerx - c.rect.centerx) * 0.1
                 c.rect.y += (player.rect.centery - c.rect.centery) * 0.1
 
         for c in coins[:]:
             c.draw(screen)
             if player.rect.colliderect(c.rect):
-                player.money += 1; player.energy = min(player.max_energy, player.energy + 1.5)
+                player.money += 1; player.energy = min(player.max_energy, player.energy + 1.2)
                 coins.remove(c)
 
-        for sc in special_coins[:]:
-            sc.draw(screen)
-            if player.rect.colliderect(sc.rect):
-                player.money += 10; player.energy = min(player.max_energy, player.energy + 5.0)
-                special_coins.remove(sc)
+        for ch in chests[:]:
+            ch.draw(screen)
+            if player.rect.colliderect(ch.rect):
+                player.energy = player.max_energy
+                trigger_save_anim("MAX ENERGY!")
+                chests.remove(ch)
 
-        current_dmg = getattr(player, 'damage', 1.0)
-        current_cooldown = max(5, getattr(player, 'base_cooldown', 25))
+        # Combat Logic
         if m_click[0] and player.attack_cooldown <= 0:
-            all_t = [e for e in (bosses + enemies)]
-            all_t.sort(key=lambda t: pygame.math.Vector2(player.rect.center).distance_to(t.rect.center))
-            in_range = [t for t in all_t if pygame.math.Vector2(player.rect.center).distance_to(t.rect.center) < player.attack_radius]
-            shots = min(len(in_range), getattr(player, 'projectiles_count', 1))
-            for i in range(shots):
-                projectiles.append(Projectile(player.rect.centerx, player.rect.centery, in_range[i], player.color, player.attack_radius * 1.5))
-            if shots > 0: player.attack_cooldown = current_cooldown
+            targets = [e for e in (enemies + bosses) if pygame.math.Vector2(player.rect.center).distance_to(e.rect.center) < player.attack_radius]
+            targets.sort(key=lambda t: pygame.math.Vector2(player.rect.center).distance_to(t.rect.center))
+            if targets:
+                for i in range(min(len(targets), player.projectiles_count)):
+                    projectiles.append(Projectile(player.rect.centerx, player.rect.centery, targets[i], player.color, player.attack_radius * 1.5))
+                player.attack_cooldown = player.base_cooldown
 
         for p in projectiles[:]:
             if p.update(enemies + bosses):
                 p.draw(screen)
                 if p.rect.colliderect(p.target.rect):
-                    p.target.health -= current_dmg 
+                    p.target.health -= player.damage
                     if p in projectiles: projectiles.remove(p)
             else: 
                 if p in projectiles: projectiles.remove(p)
@@ -290,50 +270,44 @@ while True:
             e.update(player.rect); e.draw(screen)
             if e.health <= 0: 
                 enemies.remove(e); player.money += 2; boss_energy += 10
-                if random.random() < 0.1: spawn_special()
-            elif player.rect.colliderect(e.rect): 
-                player.health -= (0.2 * (1.0 + current_wave * 0.05))
+            elif player.rect.colliderect(e.rect): player.health -= 0.3
             
         for b in bosses[:]:
             b.update(player.rect); b.draw(screen)
             if b.health <= 0: 
-                bosses.remove(b)
-                player.money += 100
-                player.skill_points += 1
-                player.energy = player.max_energy
-                trigger_save_anim("+1 SKILL POINT!")
-            elif player.rect.colliderect(b.rect): player.health -= 1.0
+                bosses.remove(b); player.money += 50; player.skill_points += 1; trigger_save_anim("+1 SP!")
+            elif player.rect.colliderect(b.rect): player.health -= 0.8
 
         if boss_energy >= boss_goal:
-            nb = Boss(screen_w, screen_h)
-            nb.max_health *= (1.0 + (current_wave * 0.2))
-            nb.health = nb.max_health
-            bosses.append(nb); boss_energy = 0
+            bosses.append(Boss(screen_w, screen_h))
+            boss_energy = 0
 
-        if player.char_type == "wizard": screen.blit(wizard_img, player.rect)
-        elif player.char_type == "shadow": screen.blit(shadow_img, player.rect)
-        elif player.char_type == "dwarf": screen.blit(dwarf_img, player.rect)
+        # --- DRAWING ---
+        player.draw(screen)
 
+        # Dash Bar
+        if player.dash_cooldown > 0:
+            pygame.draw.rect(screen, (40, 40, 40), (player.rect.x, player.rect.bottom + 5, 60, 4))
+            w = 60 * (1 - (player.dash_cooldown / 100))
+            pygame.draw.rect(screen, (0, 200, 255), (player.rect.x, player.rect.bottom + 5, w, 4))
+
+        # Darkness Effect
         energy_ratio = player.energy / player.max_energy
-        if energy_ratio < 0.5:
-            darkness_alpha = int((1 - (energy_ratio * 2)) * 200)
-            darkness_surf.set_alpha(max(0, darkness_alpha))
+        if energy_ratio < 0.4:
+            darkness_surf.set_alpha(int((1 - energy_ratio) * 160))
             screen.blit(darkness_surf, (0,0))
 
-        ui_f = pygame.font.SysFont("Consolas", 22, bold=True)
-        screen.blit(ui_f.render(f"GOLD: ${player.money} | SP: {player.skill_points} | WAVE: {current_wave}", True, (255, 215, 0)), (20, 20))
-        # UI rendering in the "playing" loop
+        # UI
         ui_f = pygame.font.SysFont("Consolas", 22, bold=True)
         screen.blit(ui_f.render(f"GOLD: ${player.money} | SP: {player.skill_points}", True, (255, 215, 0)), (20, 20))
+        screen.blit(ui_f.render(f"WAVE: {current_wave} (BEST: {player.highscore})", True, (200, 200, 255)), (20, 50))
         
-        # Wave and Highscore display
-        wave_txt = f"WAVE: {current_wave} (BEST: {getattr(player, 'highscore', 1)})"
-        screen.blit(ui_f.render(wave_txt, True, (200, 200, 255)), (20, 50))
-        
-        pygame.draw.rect(screen, (20, 20, 20), (screen_w//2-100, screen_h-70, 200, 8))
-        pygame.draw.rect(screen, (0, 180, 255), (screen_w//2-100, screen_h-70, max(0, (player.energy/player.max_energy)*200), 8))
-        pygame.draw.rect(screen, (60, 0, 0), (screen_w//2-100, screen_h-55, 200, 15))
-        pygame.draw.rect(screen, (0, 255, 120), (screen_w//2-100, screen_h-55, max(0, (player.health/player.max_health)*200), 15))
+        # Bottom Center Bars
+        bar_x, bar_y = screen_w//2-100, screen_h-55
+        pygame.draw.rect(screen, (20, 20, 40), (bar_x, bar_y, 200, 10)) # Energy BG
+        pygame.draw.rect(screen, (0, 150, 255), (bar_x, bar_y, max(0, energy_ratio * 200), 10)) # Energy FG
+        pygame.draw.rect(screen, (60, 0, 0), (bar_x, bar_y + 15, 200, 15)) # Health BG
+        pygame.draw.rect(screen, (0, 255, 120), (bar_x, bar_y + 15, max(0, (player.health/player.max_health)*200), 15)) # Health FG
 
         if player.health <= 0:
             save_game_csv(user_name, player.char_type, player, skills)
