@@ -32,7 +32,7 @@ class SkillTree:
 
             # --- COLUMN 3: CORE ---
             {"id": "stamina", "name": "MAX ENERGY", "pos": (col3, row1), "cost": 60, "level": 0, "max": 15, "color": (0, 255, 255), "req": None, "currency": "gold"},
-            {"id": "buy_sp", "name": "BUY SKILL PT", "pos": (col3, row2 + 40), "cost": 250, "level": 0, "max": 99, "color": (0, 255, 150), "req": None, "currency": "gold"},
+            
 
             # --- COLUMN 4: MOVEMENT ---
             {"id": "speed", "name": "MOVE SPEED", "pos": (col4, row1), "cost": 40, "level": 0, "max": 10, "color": (50, 255, 150), "req": None, "currency": "gold"},
@@ -69,7 +69,7 @@ class SkillTree:
             if s["id"] == "health": player.max_health += 20 * lvl
             elif s["id"] == "range": 
                 # 250px is the stability limit for Pygame targeting
-                player.attack_radius = min(250, player.attack_radius + (15 * lvl))
+                player.attack_radius = min(300, player.attack_radius + (15 * lvl))
             elif s["id"] == "multi": 
                 # 5 projectiles is the limit for physics stability
                 player.projectiles_count = min(5, 1 + lvl)
@@ -80,7 +80,7 @@ class SkillTree:
             elif s["id"] == "magnet": 
                 player.magnet_range = min(300, player.magnet_range + (15 * lvl))
 
-            if s["currency"] == "gold" and s["id"] != "buy_sp":
+            if s["currency"] == "gold":
                 s["cost"] = int(s["cost"] * (1.5 ** lvl))
 
         player.health, player.energy = player.max_health, player.max_energy
@@ -156,7 +156,7 @@ class SkillTree:
                 elif s["id"] == "speed":
                     player.speed = min(6.5, player.speed + 0.3)
                 
-                if s["currency"] == "gold" and s["id"] != "buy_sp":
+                if s["currency"] == "gold":
                     s["cost"] = int(s["cost"] * 1.5)
                 return "saved"
         return None

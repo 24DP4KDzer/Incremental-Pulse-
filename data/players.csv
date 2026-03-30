@@ -1,7 +1,2 @@
-name,char_type,money,max_health,radius,speed,damage,multi,aspeed,max_energy,sp,magnet,dash,highscore,skill_health,skill_armor,skill_thorns,skill_regen,skill_magnet,skill_greed,skill_knockback,skill_lifesteal,skill_stamina,skill_buy_sp,skill_speed,skill_dash,skill_dash_cd,skill_damage,skill_range,skill_multi,skill_crit
-giemensarsts,wizard,502422,69.0,250.0,6.9,69.0,69,25,69.0,33,69,0,17,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-gie,none,0,100,100,1.3,1.0,1,25,10.0,0,60,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-yes,wizard,0,80,200,5,1.0,1,25,10.0,0,60,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-y,wizard,22,80,200,5,1.0,1,25,10.0,0,60,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-Kripotker,wizard,7105,20979.0,250,6.5,1498.5,999,25,999.0,1103,300,1,999,999,999,999,999,999,999,999,999,999,999,999,999,999,999,999,999,999
-Kripotker,dwarf,7146,80919.0,500,6.5,2997.0,999,25,999.0,1103,300,1,999,999,999,999,999,999,999,999,999,999,999,999,999,999,999,999,999,999
+name,char_type,money,max_health,radius,speed,damage,multi,aspeed,max_energy,sp,magnet,dash,highscore,skill_health,skill_armor,skill_thorns,skill_regen,skill_magnet,skill_greed,skill_knockback,skill_lifesteal,skill_stamina,skill_speed,skill_dash,skill_dash_cd,skill_damage,skill_range,skill_multi,skill_crit
+yes,wizard,79273,80.0,300,6.5,16.0,1,25,10.0,9979,60,0,1,0,0,0,0,0,0,0,0,0,10,1,5,10,10,3,10

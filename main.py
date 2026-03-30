@@ -32,10 +32,9 @@ shroud = pygame.Surface((screen_w, screen_h), pygame.SRCALPHA)
 
 # --- ADD BACKGROUND LOADING HERE ---
 try:
-    # Replace "photos/bg.png" with your actual file path
     bg_img = pygame.image.load("photos/bg.png").convert() 
     bg_img = pygame.transform.scale(bg_img, (screen_w, screen_h))
-    # Optional: Make it slightly darker so the lights pop more
+    # Make it slightly darker so the lights pop more
     bg_img.set_alpha(180) 
 except:
     bg_img = None
@@ -175,7 +174,7 @@ def load_sprite(path, size=(280, 280)):
 
 wizard_ui = load_sprite("photos/pixil-frame-going-right.png") 
 shadow_ui = load_sprite("photos/Shadow_right.png") 
-dwarf_ui = load_sprite("photos/pixil-frame-going-up.png")
+dwarf_ui = load_sprite("photos/yes.png")
 
 class Chest:
     def __init__(self):
@@ -188,7 +187,7 @@ class Chest:
 game_state, user_name = "menu", ""
 player = Player()
 skills = SkillTree(screen_w, screen_h)
-bosses, enemies, projectiles, coins, chests, active_swings = [], [], [], [], [], []
+bosses, enemies, projectiles, coins, chests, active_swings, sp, hp_drops = [], [], [], [], [], [], [], []
 boss_energy, boss_goal, max_enemies = 0, 100, 4
 time_freeze_timer = 0
 nuke_flash_timer = 0
@@ -208,6 +207,18 @@ def spawn_coin():
     c = Coin()
     c.rect.x, c.rect.y = random.randint(100, screen_w-100), random.randint(100, screen_h-100)
     coins.append(c)
+
+def spawn_sp():
+    sp = SpecialCoin()
+    sp.rect.x, sp.rect.y = random.randint(100, screen_w-100), random.randint(100, screen_h-100)
+    sp.append(c)
+
+
+def spawn_hp():
+    hp = HpCoin()
+    hp.rect.x, hp.rect.y = random.randint(100, screen_w-100), random.randint(100, screen_h-100)
+    hp.append(c)
+
 
 flicker_val = 0
 
@@ -336,8 +347,51 @@ while True:
             c.draw(screen)
             if player.rect.colliderect(c.rect):
                 player.money += int(1 * getattr(player, 'gold_modifier', 1.0))
-                player.energy = min(player.max_energy, player.energy + 1.2)
+                player.energy = min(player.max_energy, player.energy + 1.5)
                 coins.remove(c)
+
+
+
+        if len(sp) < 1:
+            new_coin = SpecialCoin() 
+            new_coin.rect.x = random.randint(100, screen_w - 100)
+            new_coin.rect.y = random.randint(100, screen_h - 100)
+            sp.append(new_coin)
+
+        for s in sp[:]:
+            # Use 's' (the individual coin), not 'c' or 'sp'
+            dist = math.hypot(player.rect.centerx - s.rect.centerx, player.rect.centery - s.rect.centery)
+            if dist < player.magnet_range:
+                s.rect.x += (player.rect.centerx - s.rect.centerx) * 0.1
+                s.rect.y += (player.rect.centery - s.rect.centery) * 0.1
+            
+            s.draw(screen)
+            
+            if player.rect.colliderect(s.rect):
+                player.money += int(5 * getattr(player, 'gold_modifier', 1.0))
+                player.energy = min(player.max_energy, player.energy + 3)
+                sp.remove(s)
+        
+
+
+        if len(hp_drops) < 1:
+            hp_coin = HpCoin()
+            hp_coin.rect.x = random.randint(100, screen_w - 100)
+            hp_coin.rect.y = random.randint(100, screen_h - 100)
+            hp_drops.append(hp_coin)
+        
+        for h in hp_drops[:]:
+            dist = math.hypot(player.rect.centerx - h.rect.centerx, player.rect.centery - h.rect.centery)
+            if dist < player.magnet_range:
+                h.rect.x += (player.rect.centerx - h.rect.centerx) * 0.1
+                h.rect.y += (player.rect.centery - h.rect.centery) * 0.1
+            h.draw(screen)
+
+            if player.rect.colliderect(h.rect):
+                player.health = min(player.max_health, player.health + 5)
+                player.energy = min(player.max_energy, player.energy + 1)
+                hp_drops.remove(h)
+
 
         for ch in chests[:]:
             ch.draw(screen)

@@ -14,14 +14,18 @@ def load_sprite(path, size=(60, 60)):
 class Player:
     def __init__(self):
         # 1. SETUP RECT AND BASE ASSETS
-        self.rect = pygame.Rect(100, 100, 60, 60)
+        self.rect = pygame.Rect(100, 100, 100, 100)
         self.color = (0, 255, 0)
         
-        self.img_left = load_sprite("photos/wizard_left.png")
-        self.img_right = load_sprite("photos/pixil-frame-going-right.png")
-        self.img_up = load_sprite("photos/pixil-frame-going-up.png")
-        self.image = self.img_right 
-        
+        self.img_left = load_sprite("photos/wizard_left.png", (100, 100))
+        self.img_right = load_sprite("photos/pixil-frame-going-right.png", (100, 100))
+        self.img_up = load_sprite("photos/pixil-frame-going-up.png", (100, 100))
+        self.image = self.img_right
+
+        self.shadow_surf = pygame.Surface((self.rect.width, 100), pygame.SRCALPHA)
+        pygame.draw.ellipse(self.shadow_surf, (0, 0, 0, 80), [0, 0, self.rect.width, 20])
+
+
         # --- DARKNESS SYSTEM SETUP ---
         # Get screen info for surface sizing
         display_info = pygame.display.Info()
@@ -43,7 +47,7 @@ class Player:
         self.max_energy = 10.0
         self.energy = 10.0
         
-        self.dash_unlocked = False
+        self.dash_unlocked = True
         self.dash_cooldown = 0
         self.magnet_range = 60 
         self.skill_points = 0
@@ -120,6 +124,15 @@ class Player:
         screen.blit(self.darkness_surf, (0, 0))
 
     def draw(self, screen):
+        # Increase the '+ 10' if it needs to go even further right
+        shadow_pos = (self.rect.x + 25, self.rect.bottom + 45) 
+        screen.blit(self.shadow_surf, shadow_pos)
+
+        if self.dash_cooldown > 0:
+            self.image.set_alpha(150) 
+        else:
+            self.image.set_alpha(255)
+
         if self.image:
             screen.blit(self.image, self.rect)
         else:
