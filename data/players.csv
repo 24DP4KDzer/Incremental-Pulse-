@@ -1,5 +1,5 @@
 name,char_type,money,max_health,radius,speed,damage,multi,aspeed,max_energy,sp,magnet,dash,highscore,skill_stamina,skill_damage,skill_lifesteal,skill_range,skill_knockback,skill_multi,skill_crit,skill_health,skill_armor,skill_regen,skill_thorns,skill_magnet,skill_greed,skill_speed,skill_dash,skill_dash_cd
-yes,wizard,10347,880.0,250,18.5,71.0,4,25,310.0,9933,300,1,5,15,10,5,10,8,3,10,10,10,5,0,10,5,10,1,5
+yes,wizard,12239,1280.0,250,26.5,81.0,4,25,460.0,9953,300,1,14,15,10,5,10,8,3,10,10,10,5,0,10,5,10,1,5
 naw,wizard,37016,80.0,200.0,5.8999999999999995,700.0,1,25,10.0,99999990,60,1,4,0,0,0,0,0,0,0,0,0,0,0,0,0,3,1,5
 nay,wizard,31,80,200,5,1.0,1,25,10.0,0,60,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 eys,wizard,10,80.0,200.0,5.0,1.0,1,25,10.0,0,60,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
@@ -27,3 +27,4 @@ yhifgjhfg,wizard,2,80,200,5,1.0,1,25,10.0,0,60,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 sdfsdf,wizard,0,80,200,5,1.0,1,25,10.0,0,60,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 adsada,wizard,3,80,200,5,1.0,1,25,10.0,0,60,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 deivids,wizard,13,80,200,5,1.0,1,25,10.0,0,90,0,2,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0
+Devids,wizard,53,80,200,5,1.0,1,25,10.0,0,60,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
