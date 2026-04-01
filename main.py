@@ -75,7 +75,7 @@ menu_logo = load_logo("photos/logo.png", screen_w * 0.6, screen_h * 0.3)
 
 # Varoņu spreiti
 wizard_ui = load_sprite("photos/wizard_right.png")
-shadow_ui = load_sprite("photos/Shadow_right.png")
+shadow_ui = load_sprite("photos/Shadow_up.png")
 dwarf_ui  = load_sprite("photos/dwarf_forward.png")
 
 freeze_surf = pygame.Surface((screen_w, screen_h), pygame.SRCALPHA)
@@ -398,7 +398,7 @@ while True:
         overlay.fill((0, 0, 0, 100))
         screen.blit(overlay, (0, 0))
 
-        title = pygame.font.SysFont("Impact", 60).render("IZVĒLIES VARONI", True, (255, 255, 255))
+        title = pygame.font.SysFont("Impact", 60).render("CHOOSE YOUR CHARACTER", True, (255, 255, 255))
         screen.blit(title, (screen_w // 2 - title.get_width() // 2, 80))
 
         classes = [("WIZARD", (0, 200, 255), wizard_ui), ("SHADOW", (150, 0, 255), shadow_ui), ("DWARF", (255, 150, 0), dwarf_ui)]
@@ -441,7 +441,7 @@ while True:
             for _ in range(max_enemies): spawn_enemy(hp_scale, spd_scale, current_wave)
             if current_wave % 2 == 0:
                 chests.append(Chest(random.randint(100, screen_w-100), random.randint(100, screen_h-100)))
-            trigger_save_anim(f"VILNIS {current_wave}: EVOLŪCIJA")
+            trigger_save_anim(f"WAVE {current_wave}: EVOLUTION")
 
         player.move(pygame.key.get_pressed())
         player.rect.clamp_ip(screen.get_rect())
@@ -491,10 +491,10 @@ while True:
             ch.draw(screen)
             if player.rect.colliderect(ch.rect):
                 effect = random.choice(["energy", "freeze", "nuke"])
-                if effect == "energy": player.energy = player.max_energy; trigger_save_anim("MAX ENERĢIJA!")
-                elif effect == "freeze": time_freeze_timer = 300; trigger_save_anim("LAIKA APTURĒŠANA!")
+                if effect == "energy": player.energy = player.max_energy; trigger_save_anim("MAX ENERGY!")
+                elif effect == "freeze": time_freeze_timer = 300; trigger_save_anim("FREEZE TIME!")
                 elif effect == "nuke":
-                    nuke_flash_timer = 15; trigger_save_anim("EKRĀNA ATTĪRĪŠANA!")
+                    nuke_flash_timer = 15; trigger_save_anim("NUKE!")
                     for e in enemies[:]: e.health = 0
                 chests.remove(ch)
 
