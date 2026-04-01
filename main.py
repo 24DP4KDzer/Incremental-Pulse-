@@ -402,7 +402,7 @@ while True:
         screen.blit(title, (screen_w // 2 - title.get_width() // 2, 80))
 
         classes = [("WIZARD", (0, 200, 255), wizard_ui), ("SHADOW", (150, 0, 255), shadow_ui), ("DWARF", (255, 150, 0), dwarf_ui)]
-        for i, (name, col, img) in enumerate(classes):
+        for i, (name, col, img) in enumerate(classes):      
             rect = pygame.Rect(screen_w // 2 - 450 + (i * 310), 200, 280, 400)
             is_hovered = rect.collidepoint(m_pos)
             border_col = (255, 255, 255) if is_hovered else col

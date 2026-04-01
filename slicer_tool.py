@@ -5,7 +5,7 @@ pygame.init()
 
 # 1. Load the image
 # Make sure this matches your exact file path!
-image_path = "photos/allOfWizard.png"
+image_path = "photos/allOfEnemies.png"
 try:
     sheet = pygame.image.load(image_path)
 except:
@@ -20,12 +20,12 @@ pygame.display.set_caption("Sprite Slicer Tool")
 # ==========================================
 # 2. TWEAK THESE NUMBERS UNTIL THE RED BOXES FIT!
 # ==========================================
-frame_w = 200    # Width of the box
-frame_h = 230       # Height of the box
-start_x = 1     # Distance from left edge to the first box
-start_y = 0    # Distance from top edge to the first box
-padding_x = 20     # Empty space between columns
-padding_y = 5    # Empty space between rows
+frame_w = 190    # Width of the box
+frame_h = 225       # Height of the box
+start_x = 62     # Distance from left edge to the first box
+start_y = 310    # Distance from top edge to the first box
+padding_x = 42     # Empty space between columns
+padding_y = 43    # Empty space between rows
 num_frames = 2     # Number of columns
 # ==========================================
 
