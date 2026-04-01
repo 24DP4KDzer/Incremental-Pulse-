@@ -82,12 +82,12 @@ class Player:
         
         if char_type == "wizard":
             self.speed, self.max_health, self.color = 5, 80, (100, 200, 255)
-            self.attack_radius, self.attack_style = 200, "homing"
+            self.attack_radius, self.attack_style = 250, "homing"
         elif char_type == "shadow":
             self.speed, self.max_health, self.color = 8, 60, (150, 100, 255)
             self.attack_radius, self.attack_style = 150, "homing"
         elif char_type == "dwarf":
-            self.speed, self.max_health, self.color = 3, 150, (255, 100, 100)
+            self.speed, self.max_health, self.color = 3, 150, (255, 250, 100)
             self.attack_radius, self.attack_style = 120, "melee"
             self.damage = 2 
             

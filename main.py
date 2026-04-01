@@ -484,7 +484,7 @@ while True:
                 h.rect.y += (player.rect.centery - h.rect.centery) * 0.1
             h.draw(screen)
             if player.rect.colliderect(h.rect):
-                player.health = min(player.max_health, player.health + 5)
+                player.health = min(player.max_health, player.health + 20)
                 hp_drops.remove(h)
 
         for ch in chests[:]:
@@ -494,8 +494,14 @@ while True:
                 if effect == "energy": player.energy = player.max_energy; trigger_save_anim("MAX ENERGY!")
                 elif effect == "freeze": time_freeze_timer = 300; trigger_save_anim("FREEZE TIME!")
                 elif effect == "nuke":
-                    nuke_flash_timer = 15; trigger_save_anim("NUKE!")
-                    for e in enemies[:]: e.health = 0
+                    nuke_flash_timer = 15; trigger_save_anim("EKRĀNA ATTĪRĪŠANA!")
+                    # 1. Iznīcināt visus parastos ienaidniekus
+                    for e in enemies[:]: 
+                        e.health = 0
+                    # 2. Nodarīt 150 bojājumus VISIEM bosses, kas šobrīd ir ekrānā!
+                    for b in bosses[:]:
+                        b.health -= 150  
+                        
                 chests.remove(ch)
 
         # [SAREŽĢĪTA LOĢIKA]: Automātiskā šaušana un mērķēšana
@@ -547,7 +553,14 @@ while True:
 
         for b in bosses[:]:
             if time_freeze_timer <= 0:
-                b.update(player.rect, dilation)
+                # Saglabājam izšauto ugunsbumbu damage mainīgajā 'boss_projectile_dmg'
+                boss_projectile_dmg = b.update(player.rect, dilation)
+                
+                # Ja mēs saņēmam saapi no ugunsbumbas, atņemam dzīvību (ņemot vērā bruņas)
+                if boss_projectile_dmg and boss_projectile_dmg > 0:
+                    player.health -= max(1, boss_projectile_dmg - getattr(player, 'armor', 0))
+                    
+                # Pieskaršanās bojājumi joprojām strādā!
                 if player.rect.colliderect(b.rect):
                     player.health -= max(0.1, 0.8 - (getattr(player, 'armor', 0) * 0.05))
             b.draw(screen)
@@ -555,36 +568,43 @@ while True:
                 bosses.remove(b); player.money += 50; player.skill_points += 1; trigger_save_anim("+1 SP!")
 
         if boss_energy >= boss_goal:
-            bosses.append(Boss(screen_w, screen_h))
+            # beigās 'current_wave', lai boss zinātu, cik stipram viņam jābūt!
+            bosses.append(Boss(screen_w, screen_h, current_wave))
             boss_energy = 0
 
         player.draw(screen)
 
         # [SAREŽĢĪTA LOĢIKA]: TUMSAS SISTĒMA (Apgaismojuma renderēšana)
         # Šis kods pārklāj ekrānu ar tumšu slāni, bet ap spēlētāju izgriež "caurumu", lai radītu gaismas efektu.
-        shroud.fill((5, 5, 15, 200)) # Aizpilda virsmu ar tumši zilu, puskurspīdīgu krāsu
-        
-        # 'pulse' mainīgais liek gaismas rādiusam nedaudz pulsēt (sarauties un izplesties), izmantojot sinusa viļņu
+        shroud.fill((5, 5, 15, 180))
         pulse = int(6 * math.sin(flicker_val))
         light_radius = max(10, int(player.attack_radius * 1.4) + pulse)
         
-        # Izveidojam pagaidu virsmu gaismai (tās izmērs ir 2x rādiuss)
-        t_surf = pygame.Surface((light_radius * 2, light_radius * 2), pygame.SRCALPHA)
-        core_radius = max(1, light_radius // 2)
-        
-        # Uzzīmējam tumšu iekšējo apli
-        pygame.draw.circle(t_surf, (0, 0, 0, 255), (light_radius, light_radius), core_radius)
-        
-        # Šis cikls veido gaismas "izplūšanas" efektu, samazinot 'alpha' (caurspīdīgumu) jo tālāk ejam no centra
-        for r in range(light_radius, core_radius, -1):
-            alpha = max(0, min(255, int(255 * (1 - (r - core_radius) / max(1, light_radius - core_radius)))))
-            pygame.draw.circle(t_surf, (0, 0, 0, alpha), (light_radius, light_radius), r)
+        # [SAREŽĢĪTA LOĢIKA]: Gaismas kešatmiņa (Glow Cache)
+        # Ja mēs katru kadru zīmējam 200+ lielus apļus, spēle sāk ļoti bremzēt, kad uzbrukuma rādiuss ir liels.
+        # Tāpēc mēs izmantojam vārdnīcu 'glow_cache', lai saglabātu uzzīmētos gaismas apļus.
+        if not hasattr(player, 'glow_cache'):
+            player.glow_cache = {}
             
-        # Izmantojot BLEND_RGBA_SUB, mēs šo uzzīmēto apļu caurspīdīgumu ATŅEMAM no galvenā tumsas slāņa. 
-        # Rezultātā veidojas caurums tumsā.
+        # Pārbaudām, vai šāda izmēra gaisma jau ir uzzīmēta iepriekš
+        if light_radius not in player.glow_cache:
+            t_surf = pygame.Surface((light_radius * 2, light_radius * 2), pygame.SRCALPHA)
+            core_radius = max(1, light_radius // 2)
+            pygame.draw.circle(t_surf, (0, 0, 0, 255), (light_radius, light_radius), core_radius)
+            
+            # Solis -3 nozīmē, ka mēs zīmējam 3x mazāk apļu (ietaupot resursus), saglabājot to pašu izskatu!
+            for r in range(light_radius, core_radius, -3):
+                alpha = max(0, min(255, int(255 * (1 - (r - core_radius) / max(1, light_radius - core_radius)))))
+                pygame.draw.circle(t_surf, (0, 0, 0, alpha), (light_radius, light_radius), r)
+                
+            # Saglabājam gatavo bildi atmiņā
+            player.glow_cache[light_radius] = t_surf
+            
+        # Paņemam gatavo gaismu no atmiņas (Tas neprasa nekādu skaitļošanas jaudu!)
+        t_surf = player.glow_cache[light_radius]
+        
         shroud.blit(t_surf, t_surf.get_rect(center=player.rect.center), special_flags=pygame.BLEND_RGBA_SUB)
         screen.blit(shroud, (0, 0))
-
         # --- LIETOTĀJA SASKARNE (UI) ---
         if nuke_flash_timer > 0:
             flash = pygame.Surface((screen_w, screen_h)); flash.fill((255, 255, 255))

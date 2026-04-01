@@ -38,10 +38,10 @@ class SkillTree:
             {"id": "crit", "name": "CRIT CHANCE", "pos": (center_x + 120, center_y - 330), "cost": 50, "level": 0, "max": 10, "color": (255, 0, 0), "req": "multi", "currency": "gold"},
 
             # ZARS UZ LEJU: DEFENSE (Dzīvība un aizsardzība)
-            {"id": "health", "name": "MAX HEALTH", "pos": (center_x, center_y + 130), "cost": 48, "level": 0, "max": 10, "color": (255, 60, 60), "req": None, "currency": "gold"},
-            {"id": "armor", "name": "ARMOR", "pos": (center_x, center_y + 230), "cost": 55, "level": 0, "max": 10, "color": (120, 120, 120), "req": "health", "currency": "gold"},
-            {"id": "regen", "name": "HP REGEN", "pos": (center_x - 100, center_y + 230), "cost": 4, "level": 0, "max": 5, "color": (255, 105, 180), "req": "health", "currency": "sp"},
-            {"id": "thorns", "name": "THORN DAMAGE", "pos": (center_x, center_y + 340), "cost": 3, "level": 0, "max": 5, "color": (34, 139, 34), "req": "armor", "currency": "sp"},
+            {"id": "health", "name": "MAX HEALTH", "pos": (center_x, center_y + 130), "cost": 20, "level": 0, "max": 10, "color": (255, 60, 60), "req": None, "currency": "gold"},
+            {"id": "armor", "name": "ARMOR", "pos": (center_x + 120, center_y + 240), "cost": 55, "level": 0, "max": 10, "color": (120, 120, 120), "req": "health", "currency": "gold"},
+            {"id": "regen", "name": "HP REGEN", "pos": (center_x - 120, center_y + 240), "cost": 4, "level": 0, "max": 5, "color": (255, 105, 180), "req": "health", "currency": "sp"},
+            {"id": "thorns", "name": "THORN DAMAGE", "pos": (center_x + 120, center_y + 350), "cost": 3, "level": 0, "max": 5, "color": (34, 139, 34), "req": "armor", "currency": "sp"},
 
             # ZARS PA KREISI: UTILITY (Nauda un magnēts)
             {"id": "magnet", "name": "COIN MAGNET", "pos": (center_x - 160, center_y), "cost": 35, "level": 0, "max": 10, "color": (100, 100, 255), "req": None, "currency": "gold"},
@@ -74,11 +74,11 @@ class SkillTree:
             lvl = skill_node["level"]
             if lvl <= 0: continue
             
-            if skill_node["id"] == "health": player.max_health += 20 * lvl
+            if skill_node["id"] == "health": player.max_health += (player.max_health * 0.1) * lvl
             elif skill_node["id"] == "armor": player.armor = getattr(player, 'armor', 0) + lvl
             elif skill_node["id"] == "thorns": player.thorns = getattr(player, 'thorns', 0) + lvl
             elif skill_node["id"] == "regen": player.regen = getattr(player, 'regen', 0) + (0.01 * lvl)
-            elif skill_node["id"] == "range": player.attack_radius = min(250, player.attack_radius + (15 * lvl))
+            elif skill_node["id"] == "range": player.attack_radius = min(50, player.attack_radius + (15 * lvl))
             elif skill_node["id"] == "multi": player.projectile_count = min(5, 1 + lvl)
             elif skill_node["id"] == "speed": player.speed += (0.4 * lvl) # Izlabots ātruma limits
             elif skill_node["id"] == "damage": player.damage += 0.5 * lvl
@@ -114,14 +114,14 @@ class SkillTree:
 
                 # --- IMMEDIATE PLAYER UPDATES ---
                 if skill_node["id"] == "health":
-                    player.max_health += 20
-                    player.health += 20
+                    player.max_health += player.max_health * 0.1
+                    player.health += player.max_health * 0.1
                 elif skill_node["id"] == "armor":
                     player.armor = getattr(player, 'armor', 0) + 1
                 elif skill_node["id"] == "regen":
                     player.regen = getattr(player, 'regen', 0) + 0.01
                 elif skill_node["id"] == "range":
-                    player.attack_radius = min(300, player.attack_radius + 15)
+                    player.attack_radius = min(500, player.attack_radius + 15)
                 elif skill_node["id"] == "multi":
                     player.projectile_count = min(5, getattr(player, 'projectile_count', 1) + 1)
                 elif skill_node["id"] == "damage":
