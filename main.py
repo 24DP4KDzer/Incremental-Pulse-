@@ -11,14 +11,14 @@ from projectile import Projectile
 from skill_tree import SkillTree
 from boss import Boss
 
-# 1. INITIALIZATION
+# 1. INICIALIZĀCIJA
 pygame.init()
 screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
 screen_w, screen_h = screen.get_size()
 pygame.display.set_caption("Pulse: Evolution")
 clock = pygame.time.Clock()
 
-# 2. SAVE/LOAD SYSTEM
+# 2. SAGLABĀŠANAS/IELĀDES SISTĒMA
 PLAYER_FILE = "data/players.csv"
 if not os.path.exists("data"): 
     os.makedirs("data")
@@ -27,10 +27,12 @@ save_notification_timer = 0
 save_notification_msg = ""
 current_wave = 1
 
-# PERSISTENT SHROUD SURFACE
+# PASTĀVĪGAIS TUMSAS (SHROUD) SLĀNIS
 shroud = pygame.Surface((screen_w, screen_h), pygame.SRCALPHA)
 
-# --- IMAGE LOADERS ---
+# --- ATTĒLU IELĀDĒTĀJI ---
+
+# funkcija load_bg pieņem str tipa vērtību path un atgriež pygame.Surface tipa vērtību image
 def load_bg(path):
     try:
         img = pygame.image.load(path).convert()
@@ -38,6 +40,7 @@ def load_bg(path):
     except:
         return None
 
+# funkcija load_sprite pieņem str tipa vērtību path un tuple tipa vērtību size un atgriež pygame.Surface tipa vērtību img
 def load_sprite(path, size=(280, 280)):
     try:
         img = pygame.image.load(path).convert_alpha()
@@ -50,6 +53,7 @@ def load_sprite(path, size=(280, 280)):
         surf.fill((255, 0, 255))
         return surf
 
+# funkcija load_logo pieņem str tipa vērtību path, int tipa vērtību max_w un int tipa vērtību max_h un atgriež pygame.Surface tipa vērtību img
 def load_logo(path, max_w, max_h):
     try:
         img = pygame.image.load(path).convert_alpha()
@@ -60,12 +64,7 @@ def load_logo(path, max_w, max_h):
     except:
         return None
 
-# --- LOAD ALL ASSETS ---
-# Backgrounds — put these PNGs in your photos/ folder:
-#   photos/menu_bg.png        -> menu screen background
-#   photos/char_select_bg.png -> character select background
-#   photos/bg.png             -> in-game background
-#   photos/logo.png           -> game title logo (replaces "PULSE" text)
+# --- IELĀDĒT VISUS AKTĪVUS ---
 menu_bg        = load_bg("photos/menu_bg.png")
 char_select_bg = load_bg("photos/char_select_bg.png")
 game_bg        = load_bg("photos/bg.png")
@@ -74,7 +73,7 @@ if game_bg:
 
 menu_logo = load_logo("photos/logo.png", screen_w * 0.6, screen_h * 0.3)
 
-# Character sprites
+# Varoņu spreiti
 wizard_ui = load_sprite("photos/wizard_right.png")
 shadow_ui = load_sprite("photos/Shadow_right.png")
 dwarf_ui  = load_sprite("photos/dwarf_forward.png")
@@ -83,6 +82,7 @@ freeze_surf = pygame.Surface((screen_w, screen_h), pygame.SRCALPHA)
 freeze_surf.fill((0, 150, 255, 40))
 
 class MeleeSwing:
+    # funkcija __init__ pieņem MeleeSwing tipa vērtību self, Player tipa vērtību owner, list tipa vērtību enemies un int tipa vērtību damage un atgriež None tipa vērtību None
     def __init__(self, owner, enemies, damage):
         self.owner = owner
         self.angle = 0
@@ -90,17 +90,31 @@ class MeleeSwing:
         self.radius = owner.attack_radius
         self.lifetime = 360 // self.spin_speed
 
+        # [SAREŽĢĪTA LOĢIKA]: Tuvcīņas sadursmes un atsitiena aprēķins
+        # Cikls iet cauri visiem ienaidniekiem, lai aprēķinātu to attālumu no spēlētāja centra
+        # Izmanto Pitagora teorēmu (math.hypot), lai noteiktu eiklīda distanci.
         for e in enemies:
             dist = math.hypot(owner.rect.centerx - e.rect.centerx, owner.rect.centery - e.rect.centery)
+            
+            # Ja ienaidnieks atrodas ieroča rādiusā (+ 25 pikseļu kļūdas robeža)
             if dist <= self.radius + 25:
                 enemy_armor = getattr(e, 'armor', 0)
-                base_dmg = max(1, damage - enemy_armor)
+                base_dmg = max(1, damage - enemy_armor) # Neļauj bojājumam būt mazākam par 1
                 final_dmg = base_dmg
+                
+                # Kritiskā sitiena aprēķins
                 if random.randint(1, 100) <= getattr(owner, 'crit_chance', 0):
                     final_dmg *= 2
+                
                 e.health -= final_dmg
+                
+                # Dzīvības zādzības (lifesteal) atjaunošana
                 if getattr(owner, 'lifesteal', 0) > 0:
                     owner.health = min(owner.max_health, owner.health + owner.lifesteal)
+                
+                # Atsitiena (knockback) vektora aprēķins
+                # Mēs noskaidrojam x un y virzienu no spēlētāja uz ienaidnieku,
+                # un tad normalizējam to (dalot ar dist_kb), lai ienaidnieku atgrūstu tieši par 10 pikseļiem abās asīs.
                 if hasattr(e, 'rect'):
                     dx = e.rect.centerx - owner.rect.centerx
                     dy = e.rect.centery - owner.rect.centery
@@ -113,10 +127,12 @@ class MeleeSwing:
         pygame.draw.rect(self.surface, (100, 50, 0), (0, 12, 50, 10))
         pygame.draw.rect(self.surface, (200, 200, 200), (45, 0, 25, 35))
 
+    # funkcija update pieņem MeleeSwing tipa vērtību self un atgriež None tipa vērtību None
     def update(self):
         self.angle += self.spin_speed
         self.lifetime -= 1
 
+    # funkcija draw pieņem MeleeSwing tipa vērtību self un pygame.Surface tipa vērtību surface un atgriež None tipa vērtību None
     def draw(self, surface):
         rotated_axe = pygame.transform.rotate(self.surface, -self.angle)
         rad = math.radians(self.angle)
@@ -125,12 +141,17 @@ class MeleeSwing:
         rect = rotated_axe.get_rect(center=(pos_x, pos_y))
         surface.blit(rotated_axe, rect)
 
+# funkcija trigger_save_anim pieņem str tipa vērtību msg un atgriež None tipa vērtību None
 def trigger_save_anim(msg):
     global save_notification_timer, save_notification_msg
     save_notification_timer = 90
     save_notification_msg = msg
 
+# funkcija save_game_csv pieņem str tipa vērtību name, str tipa vērtību char_type, Player tipa vērtību p un SkillTree tipa vērtību s_tree un atgriež None tipa vērtību None
 def save_game_csv(name, char_type, p, s_tree):
+    # [SAREŽĢĪTA LOĢIKA]: CSV datu atjaunināšana
+    # Šis kods vispirms nolasa visu CSV failu un pārvērš to par vārdnīcu sarakstu (list of dictionaries).
+    # Tas ļauj saglabāt iepriekšējo spēlētāju datus neskartus, kamēr mēs atjauninām tikai konkrētā spēlētāja rindu.
     p_rows = []
     if os.path.exists(PLAYER_FILE):
         try:
@@ -141,6 +162,7 @@ def save_game_csv(name, char_type, p, s_tree):
     if globals().get('current_wave', 1) > getattr(p, 'highscore', 1):
         p.highscore = globals().get('current_wave', 1)
 
+    # Izveido jaunu vārdnīcu ar aktuālajiem spēlētāja datiem
     new_p_data = {
         "name": name, "char_type": char_type, "money": p.money,
         "max_health": p.max_health, "radius": p.attack_radius,
@@ -157,6 +179,8 @@ def save_game_csv(name, char_type, p, s_tree):
     for s in s_tree.skills:
         new_p_data[f"skill_{s['id']}"] = s["level"]
 
+    # Meklējam, vai šis spēlētājs un varoņa klase jau eksistē datubāzē.
+    # Ja eksistē, mēs pārrakstām veco rindu. Ja nē, mēs pievienojam to kā jaunu rindu saraksta beigās.
     found_p = False
     for i, row in enumerate(p_rows):
         if row.get("name") == name and row.get("char_type") == char_type:
@@ -166,17 +190,21 @@ def save_game_csv(name, char_type, p, s_tree):
     if not found_p:
         p_rows.append(new_p_data)
 
+    # Visbeidzot ierakstām atpakaļ visu sarakstu failā ar jaunajiem datiem.
     with open(PLAYER_FILE, 'w', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=list(new_p_data.keys()))
         writer.writeheader()
         writer.writerows(p_rows)
 
+# funkcija load_game_csv pieņem str tipa vērtību name, str tipa vērtību char_type, Player tipa vērtību p un SkillTree tipa vērtību s_tree un atgriež None tipa vērtību None
 def load_game_csv(name, char_type, p, s_tree):
     if os.path.exists(PLAYER_FILE):
         with open(PLAYER_FILE, 'r', newline='') as f:
             reader = csv.DictReader(f)
             for row in reader:
                 if row["name"] == name and row["char_type"] == char_type:
+                    # Iekšējās palīgfunkcijas drošai datu konvertēšanai no teksta uz cipariem.
+                    # Ja šūna ir tukša vai nederīga, tiek atgriezta noklusējuma vērtība 'd'.
                     def s_i(k, d): return int(row[k]) if k in row and row[k].strip() else d
                     def s_f(k, d): return float(row[k]) if k in row and row[k].strip() else d
 
@@ -200,12 +228,14 @@ def load_game_csv(name, char_type, p, s_tree):
 
                     s_tree.sync_with_player(p)
 
+# funkcija get_dist_to_rect pieņem tuple tipa vērtību point un pygame.Rect tipa vērtību rect un atgriež float tipa vērtību distance
 def get_dist_to_rect(point, rect):
     px = max(rect.left, min(point[0], rect.right))
     py = max(rect.top, min(point[1], rect.bottom))
     return math.hypot(point[0] - px, point[1] - py)
 
 class Chest:
+    # funkcija __init__ pieņem Chest tipa vērtību self, int tipa vērtību x un int tipa vērtību y un atgriež None tipa vērtību None
     def __init__(self, x, y):
         try:
             self.image = pygame.image.load("photos/chest.png").convert_alpha()
@@ -215,6 +245,7 @@ class Chest:
             self.image.fill((255, 215, 0))
         self.rect = self.image.get_rect(topleft=(x, y))
 
+    # funkcija draw pieņem Chest tipa vērtību self un pygame.Surface tipa vērtību surface un atgriež None tipa vērtību None
     def draw(self, surface):
         surface.blit(self.image, self.rect)
 
@@ -226,6 +257,7 @@ boss_energy, boss_goal, max_enemies = 0, 100, 4
 time_freeze_timer = 0
 nuke_flash_timer = 0
 
+# funkcija spawn_enemy pieņem float tipa vērtību hp_m, float tipa vērtību spd_m un int tipa vērtību wave un atgriež None tipa vērtību None
 def spawn_enemy(hp_m=1.0, spd_m=1.0, wave=1):
     e = Enemy(random.randint(0, screen_w), random.randint(0, screen_h))
     e.max_health = int(e.max_health * hp_m)
@@ -234,6 +266,7 @@ def spawn_enemy(hp_m=1.0, spd_m=1.0, wave=1):
     e.armor = wave // 5
     enemies.append(e)
 
+# funkcija spawn_coin nepieņem argumentus un atgriež None tipa vērtību None
 def spawn_coin():
     c = Coin()
     c.rect.x, c.rect.y = random.randint(100, screen_w-100), random.randint(100, screen_h-100)
@@ -241,7 +274,7 @@ def spawn_coin():
 
 flicker_val = 0
 
-# --- MAIN LOOP ---
+# --- GALVENAIS CIKLS ---
 while True:
     m_pos = pygame.mouse.get_pos()
     m_click = pygame.mouse.get_pressed()
@@ -301,9 +334,9 @@ while True:
                     game_state = "playing"
                 elif result == "saved":
                     save_game_csv(user_name, player.char_type, player, skills)
-                    trigger_save_anim("UPGRADED!")
+                    trigger_save_anim("UZLABOTS!")
 
-    # --- MENU ---
+    # --- IZVĒLNE ---
     if game_state == "menu":
         if menu_bg:
             screen.blit(menu_bg, (0, 0))
@@ -311,10 +344,30 @@ while True:
             screen.fill((5, 5, 15))
 
         if menu_logo:
-            screen.blit(menu_logo, menu_logo.get_rect(center=(screen_w // 2, screen_h // 2 - 80)))
+            # 1. Iegūstam logo pozīciju
+            logo_rect = menu_logo.get_rect(center=(screen_w // 2, screen_h // 2 - 80))
+            
+            # 2. Izveidojam masku no logo (iegūstam formas kontūru)
+            mask = pygame.mask.from_surface(menu_logo)
+            
+            # 3. Pārvēršam masku par tumšu virsmu (setcolor = ēnas krāsa un caurspīdīgums)
+            shadow_surf = mask.to_surface(setcolor=(0, 0, 0, 180), unsetcolor=(0, 0, 0, 0))
+            
+            # 4. Uzzīmējam ēnu, nobīdot to par 5 pikseļiem pa labi (+5) un uz leju (+5)
+            screen.blit(shadow_surf, (logo_rect.x + 10, logo_rect.y + 5))
+            
+            # 5. Uzzīmējam oriģinālo logo pa virsu
+            screen.blit(menu_logo, logo_rect)
         else:
+            # Ja logo attēls neielādējas, izveidojam ēnu arī rezerves tekstam!
             title = pygame.font.SysFont("Impact", 100).render("PULSE", True, (0, 255, 150))
-            screen.blit(title, title.get_rect(center=(screen_w // 2, screen_h // 2 - 80)))
+            shadow_title = pygame.font.SysFont("Impact", 100).render("PULSE", True, (0, 0, 0))
+            title_rect = title.get_rect(center=(screen_w // 2, screen_h // 2 - 80))
+            
+            screen.blit(shadow_title, (title_rect.x + 5, title_rect.y + 5))
+            screen.blit(title, title_rect)
+
+            
 
         box_w, box_h = 400, 50
         box_rect = pygame.Rect(screen_w // 2 - box_w // 2, screen_h // 2 + 40, box_w, box_h)
@@ -322,10 +375,10 @@ while True:
         pygame.draw.rect(screen, (0, 255, 150), box_rect, 2, border_radius=10)
         u_txt = pygame.font.SysFont("Arial", 28).render(f"{user_name}|", True, (255, 255, 255))
         screen.blit(u_txt, u_txt.get_rect(center=box_rect.center))
-        hint = pygame.font.SysFont("Arial", 20).render("Enter your name and press ENTER", True, (150, 150, 150))
+        hint = pygame.font.SysFont("Arial", 20).render("Input the user and press ENTER", True, (150, 150, 150))
         screen.blit(hint, hint.get_rect(center=(screen_w // 2, screen_h // 2 + 110)))
 
-    # --- CHAR SELECT ---
+    # --- VAROŅA IZVĒLE ---
     elif game_state == "char_select":
         if char_select_bg:
             screen.blit(char_select_bg, (0, 0))
@@ -336,7 +389,7 @@ while True:
         overlay.fill((0, 0, 0, 100))
         screen.blit(overlay, (0, 0))
 
-        title = pygame.font.SysFont("Impact", 60).render("SELECT CHARACTER", True, (255, 255, 255))
+        title = pygame.font.SysFont("Impact", 60).render("IZVĒLIES VARONI", True, (255, 255, 255))
         screen.blit(title, (screen_w // 2 - title.get_width() // 2, 80))
 
         classes = [("WIZARD", (0, 200, 255), wizard_ui), ("SHADOW", (150, 0, 255), shadow_ui), ("DWARF", (255, 150, 0), dwarf_ui)]
@@ -350,7 +403,7 @@ while True:
             name_t = pygame.font.SysFont("Impact", 32).render(name, True, border_col)
             screen.blit(name_t, name_t.get_rect(center=(rect.centerx, rect.bottom - 45)))
 
-    # --- PLAYING ---
+    # --- SPĒLĒŠANA ---
     elif game_state == "playing":
         if game_bg: screen.blit(game_bg, (0, 0))
         else: screen.fill((5, 5, 15))
@@ -379,7 +432,7 @@ while True:
             for _ in range(max_enemies): spawn_enemy(hp_scale, spd_scale, current_wave)
             if current_wave % 2 == 0:
                 chests.append(Chest(random.randint(100, screen_w-100), random.randint(100, screen_h-100)))
-            trigger_save_anim(f"WAVE {current_wave}: EVOLVED")
+            trigger_save_anim(f"VILNIS {current_wave}: EVOLŪCIJA")
 
         player.move(pygame.key.get_pressed())
         player.rect.clamp_ip(screen.get_rect())
@@ -429,21 +482,28 @@ while True:
             ch.draw(screen)
             if player.rect.colliderect(ch.rect):
                 effect = random.choice(["energy", "freeze", "nuke"])
-                if effect == "energy": player.energy = player.max_energy; trigger_save_anim("MAX ENERGY!")
-                elif effect == "freeze": time_freeze_timer = 300; trigger_save_anim("TIME FREEZE!")
+                if effect == "energy": player.energy = player.max_energy; trigger_save_anim("MAX ENERĢIJA!")
+                elif effect == "freeze": time_freeze_timer = 300; trigger_save_anim("LAIKA APTURĒŠANA!")
                 elif effect == "nuke":
-                    nuke_flash_timer = 15; trigger_save_anim("SCREEN WIPE!")
+                    nuke_flash_timer = 15; trigger_save_anim("EKRĀNA ATTĪRĪŠANA!")
                     for e in enemies[:]: e.health = 0
                 chests.remove(ch)
 
+        # [SAREŽĢĪTA LOĢIKA]: Automātiskā šaušana un mērķēšana
         if player.attack_cooldown <= 0:
             if player.char_type == "dwarf":
+                # Rūķis veic apļveida sitienu visiem, kas ir apkārt
                 active_swings.append(MeleeSwing(player, enemies + bosses, player.damage))
                 player.attack_cooldown = player.base_cooldown
             else:
+                # Burvis un Ēna izmanto tēmēšanu:
+                # 1. Atrod visus ienaidniekus un priekšniekus, kas atrodas spēlētāja rādiusā
                 targets = [e for e in (enemies + bosses) if get_dist_to_rect(player.rect.center, e.rect) <= player.attack_radius]
                 if targets:
+                    # 2. Sakārto mērķus, sākot no tuvākā (izmantojot lambda funkciju attāluma iegūšanai)
                     targets.sort(key=lambda t: get_dist_to_rect(player.rect.center, t.rect))
+                    
+                    # 3. Izšauj lādiņus. Cikls iet līdz 'projectile_count' skaitam, vai kamēr nebeidzas mērķi
                     for i in range(min(len(targets), player.projectile_count)):
                         projectiles.append(Projectile(player.rect.centerx, player.rect.centery, targets[i], player.color, player.attack_radius * 1.5))
                     player.attack_cooldown = player.base_cooldown
@@ -491,20 +551,32 @@ while True:
 
         player.draw(screen)
 
-        # --- DARKNESS SYSTEM ---
-        shroud.fill((5, 5, 15, 200))
+        # [SAREŽĢĪTA LOĢIKA]: TUMSAS SISTĒMA (Apgaismojuma renderēšana)
+        # Šis kods pārklāj ekrānu ar tumšu slāni, bet ap spēlētāju izgriež "caurumu", lai radītu gaismas efektu.
+        shroud.fill((5, 5, 15, 200)) # Aizpilda virsmu ar tumši zilu, puskurspīdīgu krāsu
+        
+        # 'pulse' mainīgais liek gaismas rādiusam nedaudz pulsēt (sarauties un izplesties), izmantojot sinusa viļņu
         pulse = int(6 * math.sin(flicker_val))
         light_radius = max(10, int(player.attack_radius * 1.4) + pulse)
+        
+        # Izveidojam pagaidu virsmu gaismai (tās izmērs ir 2x rādiuss)
         t_surf = pygame.Surface((light_radius * 2, light_radius * 2), pygame.SRCALPHA)
         core_radius = max(1, light_radius // 2)
+        
+        # Uzzīmējam tumšu iekšējo apli
         pygame.draw.circle(t_surf, (0, 0, 0, 255), (light_radius, light_radius), core_radius)
+        
+        # Šis cikls veido gaismas "izplūšanas" efektu, samazinot 'alpha' (caurspīdīgumu) jo tālāk ejam no centra
         for r in range(light_radius, core_radius, -1):
             alpha = max(0, min(255, int(255 * (1 - (r - core_radius) / max(1, light_radius - core_radius)))))
             pygame.draw.circle(t_surf, (0, 0, 0, alpha), (light_radius, light_radius), r)
+            
+        # Izmantojot BLEND_RGBA_SUB, mēs šo uzzīmēto apļu caurspīdīgumu ATŅEMAM no galvenā tumsas slāņa. 
+        # Rezultātā veidojas caurums tumsā.
         shroud.blit(t_surf, t_surf.get_rect(center=player.rect.center), special_flags=pygame.BLEND_RGBA_SUB)
         screen.blit(shroud, (0, 0))
 
-        # --- UI ---
+        # --- LIETOTĀJA SASKARNE (UI) ---
         if nuke_flash_timer > 0:
             flash = pygame.Surface((screen_w, screen_h)); flash.fill((255, 255, 255))
             flash.set_alpha(int((nuke_flash_timer / 15) * 255)); screen.blit(flash, (0, 0))
@@ -512,8 +584,9 @@ while True:
             screen.blit(freeze_surf, (0, 0))
 
         ui_f = pygame.font.SysFont("Consolas", 22, bold=True)
-        screen.blit(ui_f.render(f"GOLD: ${player.money} | SP: {player.skill_points}", True, (255, 215, 0)), (20, 20))
-        screen.blit(ui_f.render(f"WAVE: {current_wave} (BEST: {player.highscore})", True, (200, 200, 255)), (20, 50))
+        screen.blit(ui_f.render(f"Money: ${player.money} | SP: {player.skill_points}", True, (255, 215, 0)), (20, 20))
+        screen.blit(ui_f.render(f"Wave: {current_wave} (Best: {player.highscore})", True, (200, 200, 255)), (20, 50))
+        screen.blit(ui_f.render(f"ID: {user_name}", True, (200, 200, 255)), (20, 80))
         bar_x, bar_y = screen_w // 2 - 100, screen_h - 55
         pygame.draw.rect(screen, (20, 20, 40), (bar_x, bar_y, 200, 10))
         pygame.draw.rect(screen, (0, 150, 255), (bar_x, bar_y, max(0, (player.energy / player.max_energy) * 200), 10))
@@ -522,7 +595,7 @@ while True:
 
     elif game_state == "dead":
         screen.fill((5, 5, 15))
-        msg = pygame.font.SysFont("Impact", 100).render("OUT OF TIME", True, (255, 0, 0))
+        msg = pygame.font.SysFont("Impact", 100).render("GAME OVER", True, (255, 0, 0))
         screen.blit(msg, msg.get_rect(center=(screen_w // 2, screen_h // 2)))
         death_timer -= 1
         if death_timer <= 0: game_state = "skill_tree"
