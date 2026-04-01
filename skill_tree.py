@@ -72,7 +72,7 @@ class SkillTree:
             elif s["id"] == "regen": player.regen = getattr(player, 'regen', 0) + (0.01 * lvl)
             elif s["id"] == "range": player.attack_radius = min(250, player.attack_radius + (15 * lvl))
             elif s["id"] == "multi": player.projectile_count = min(5, 1 + lvl)
-            elif s["id"] == "speed": player.speed = min(6.5, player.speed + (0.4 * lvl))
+            elif s["id"] == "speed": player.speed += (0.4 * lvl)
             elif s["id"] == "damage": player.damage += 0.5 * lvl
             elif s["id"] == "magnet": player.magnet_range = min(300, player.magnet_range + (15 * lvl))
             elif s["id"] == "dash": player.dash_unlocked = True
@@ -120,7 +120,7 @@ class SkillTree:
                 elif s["id"] == "damage":
                     player.damage += 0.5
                 elif s["id"] == "speed":
-                    player.speed = min(6.5, player.speed + 0.3)
+                    player.speed += 0.3
                 elif s["id"] == "magnet":
                     player.magnet_range = min(300, player.magnet_range + 15)
                 elif s["id"] == "dash":

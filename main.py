@@ -436,7 +436,7 @@ while True:
                     for e in enemies[:]: e.health = 0
                 chests.remove(ch)
 
-        if m_click[0] and player.attack_cooldown <= 0:
+        if player.attack_cooldown <= 0:
             if player.char_type == "dwarf":
                 active_swings.append(MeleeSwing(player, enemies + bosses, player.damage))
                 player.attack_cooldown = player.base_cooldown
