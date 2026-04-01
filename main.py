@@ -271,7 +271,7 @@ while True:
                     if k[pygame.K_a]: dx = -dist
                     if k[pygame.K_d]: dx = dist
                     if dx == 0 and dy == 0:
-                        dx = dist if player.image == player.img_right else -dist
+                        dx = dist if player.direction == "right" else -dist
                     player.rect.x += dx
                     player.rect.y += dy
                     player.rect.clamp_ip(screen.get_rect())
@@ -444,7 +444,7 @@ while True:
                 targets = [e for e in (enemies + bosses) if get_dist_to_rect(player.rect.center, e.rect) <= player.attack_radius]
                 if targets:
                     targets.sort(key=lambda t: get_dist_to_rect(player.rect.center, t.rect))
-                    for i in range(min(len(targets), player.projectiles_count)):
+                    for i in range(min(len(targets), player.projectile_count)):
                         projectiles.append(Projectile(player.rect.centerx, player.rect.centery, targets[i], player.color, player.attack_radius * 1.5))
                     player.attack_cooldown = player.base_cooldown
 
