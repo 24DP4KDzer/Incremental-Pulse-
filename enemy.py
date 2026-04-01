@@ -1,7 +1,7 @@
 import pygame
 import math
 
-# --- GUDRO SPREITU GRIEŠANAS FUNKCIJA (Tāda pati kā spēlētājam!) ---
+# --- GUDRO SPRITE GRIEŠANAS FUNKCIJA (Tāda pati kā spēlētājam!) ---
 def get_image_from_sheet(sheet, column, row, width, height, start_x=0, start_y=0, padding_x=0, padding_y=0, scale_size=(50, 50)):
     image = pygame.Surface((width, height), pygame.SRCALPHA)
     exact_x = start_x + (column * width) + (column * padding_x)
