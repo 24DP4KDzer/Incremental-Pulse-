@@ -18,8 +18,8 @@ class Player:
         self.color = (0, 255, 0)
         
         self.img_left = load_sprite("photos/wizard_left.png", (100, 100))
-        self.img_right = load_sprite("photos/pixil-frame-going-right.png", (100, 100))
-        self.img_up = load_sprite("photos/pixil-frame-going-up.png", (100, 100))
+        self.img_right = load_sprite("photos/wizard_right.png", (100, 100))
+        self.img_up = load_sprite("photos/wizard_up.png", (100, 100))
         self.image = self.img_right
 
         self.shadow_surf = pygame.Surface((self.rect.width, 100), pygame.SRCALPHA)
