@@ -29,7 +29,7 @@ A high-intensity, top-down survival roguelike built in **Python** and **Pygame**
 ---
 
 ## 🛠️ Technical Specs
-* **Language:** Python 3.x
+* **Language:** Python 3.12
 * **Library:** Pygame
 * **Storage:** CSV-based flat-file database for player progression.
 * **Architecture:** Modular class-based design (`Player`, `Enemy`, `SkillTree`, `Boss`).

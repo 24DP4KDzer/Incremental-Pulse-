@@ -238,9 +238,12 @@ class Chest:
     # funkcija __init__ pieņem Chest tipa vērtību self, int tipa vērtību x un int tipa vērtību y un atgriež None tipa vērtību None
     def __init__(self, x, y):
         try:
+            #Bilde prieks laades (chest)
             self.image = pygame.image.load("photos/chest.png").convert_alpha()
-            self.image = pygame.transform.scale(self.image, (45, 45))
+            #Maina izmeru
+            self.image = pygame.transform.scale(self.image, (90, 90))
         except:
+            #rezerve ja nav bilde
             self.image = pygame.Surface((40, 40))
             self.image.fill((255, 215, 0))
         self.rect = self.image.get_rect(topleft=(x, y))
@@ -292,7 +295,13 @@ while True:
             if game_state == "menu":
                 if event.key == pygame.K_RETURN and user_name.strip(): game_state = "char_select"
                 elif event.key == pygame.K_BACKSPACE: user_name = user_name[:-1]
-                else: user_name += event.unicode
+                else: 
+                    # [SAREŽĢĪTA LOĢIKA]: Ierobežot vārda garumu
+                    # Pārbaudām, vai garums ir mazāks par 24 rakstzīmēm UN 
+                    # vai nospiestais taustiņš ir izmantojams burts/cipars (len(event.unicode) > 0),
+                    # lai novērstu "Shift" vai "Tab" taustiņu kā tukšu simbolu pievienošanu.
+                    if len(user_name) < 24 and len(event.unicode) > 0:
+                        user_name += event.unicode
 
             elif game_state == "playing" and event.key == pygame.K_SPACE:
                 if getattr(player, 'dash_unlocked', False) and player.dash_cooldown <= 0:
@@ -367,7 +376,7 @@ while True:
             screen.blit(shadow_title, (title_rect.x + 5, title_rect.y + 5))
             screen.blit(title, title_rect)
 
-            
+
 
         box_w, box_h = 400, 50
         box_rect = pygame.Rect(screen_w // 2 - box_w // 2, screen_h // 2 + 40, box_w, box_h)
@@ -585,7 +594,7 @@ while True:
 
         ui_f = pygame.font.SysFont("Consolas", 22, bold=True)
         screen.blit(ui_f.render(f"Money: ${player.money} | SP: {player.skill_points}", True, (255, 215, 0)), (20, 20))
-        screen.blit(ui_f.render(f"Wave: {current_wave} (Best: {player.highscore})", True, (200, 200, 255)), (20, 50))
+        screen.blit(ui_f.render(f"Wave: {current_wave} [Best: {player.highscore}]", True, (200, 200, 255)), (20, 50))
         screen.blit(ui_f.render(f"ID: {user_name}", True, (200, 200, 255)), (20, 80))
         bar_x, bar_y = screen_w // 2 - 100, screen_h - 55
         pygame.draw.rect(screen, (20, 20, 40), (bar_x, bar_y, 200, 10))

@@ -105,12 +105,12 @@ class Player:
 
             elif char_type == "wizard":
                 sheet = pygame.image.load("photos/allOfWizard.png").convert_alpha()
-                frame_w = 100 
-                frame_h = 143 
-                start_x = 258 
-                start_y = 252 
-                padding_x = 47 
-                padding_y = 55 
+                frame_w = 200    
+                frame_h = 230    
+                start_x = 1     
+                start_y = 0     
+                padding_x = 20     
+                padding_y = 5     
                 num_frames = 2 
             
             elif char_type == "dwarf":
