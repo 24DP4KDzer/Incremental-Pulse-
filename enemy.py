@@ -20,8 +20,8 @@ class Enemy:
         global _ENEMY_ANIMATIONS_CACHE
         
         self.rect = pygame.Rect(x, y, 40, 40)
-        self.max_health = 10
-        self.health = 10
+        self.max_health = 3
+        self.health = 3
         self.speed = 2.0
         self.armor = 0
 
