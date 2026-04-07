@@ -72,7 +72,7 @@ def draw_login_screen(screen, screen_w, screen_h, menu_bg, user_name, user_passw
         # Aktīvā lauka rāmis (Dzeltens, kad izvēlēts)
         if input_field_active == "username":
             # border_radius=15 palīdz rāmim labāk piegult kauliņu stūriem
-            pygame.draw.rect(screen, (255, 255, 0), user_box_rect, 2, border_radius=15)
+            pygame.draw.rect(screen, (0, 0, 5, 200), user_box_rect, 5, border_radius=8)
 
         # Username teksta renderēšana
         u_display = f"{user_name}|" if input_field_active == "username" else user_name
@@ -97,7 +97,7 @@ def draw_login_screen(screen, screen_w, screen_h, menu_bg, user_name, user_passw
 
         # Aktīvā lauka rāmis
         if input_field_active == "password":
-            pygame.draw.rect(screen, (255, 255, 0), pass_box_rect, 2, border_radius=15)
+            pygame.draw.rect(screen, (0, 0, 5, 200), pass_box_rect, 5, border_radius= 8)
 
         # Paroles teksta loģika - parādām zvaigznītes, nevis īsto paroli
         hidden_pass = "*" * len(user_password)
