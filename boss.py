@@ -109,7 +109,7 @@ class Boss:
     def draw(self, screen):
         # 1. Vispirms uzzīmē visas ugunsbumbas (lai tās lidotu pirms/aiz bosa)
         for fireball in self.fireballs:
-            fb.draw(screen)
+            fireball.draw(screen)
             
         # 2. Uzzīmē pašu bosu
         new_size = (self.image.get_width() * 3, self.image.get_height() * 3)

@@ -26,6 +26,44 @@ if not os.path.exists("data"):
 save_notification_timer = 0
 save_notification_msg = ""
 current_wave = 1
+game_state, user_name = "menu", ""
+user_password = ""
+password_error_msg = ""
+password_error_timer = 0
+is_new_account = False
+pause_save_btn = pygame.Rect(0, 0, 0, 0)
+pause_resume_btn = pygame.Rect(0, 0, 0, 0)
+pause_quit_btn = pygame.Rect(0, 0, 0, 0)
+
+# funkcija player_exists_in_csv pieņem str tipa vērtību name un atgriež bool tipa vērtību exists
+def player_exists_in_csv(name):
+    # Pārbauda, vai spēlētājs ar doto vārdu jau eksistē CSV failā
+    if os.path.exists(PLAYER_FILE):
+        try:
+            with open(PLAYER_FILE, 'r', newline='') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    if row.get("name") == name:
+                        return True
+        except:
+            pass
+    return False
+
+# funkcija check_password pieņem str tipa vērtību name un str tipa vērtību password un atgriež bool tipa vērtību is_correct
+def check_password(name, password):
+    # Pārbauda, vai parole sakrīt ar saglabāto paroli CSV failā
+    if os.path.exists(PLAYER_FILE):
+        try:
+            with open(PLAYER_FILE, 'r', newline='') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    if row.get("name") == name:
+                        stored_password = row.get("password", "")
+                        return stored_password == password
+        except:
+            pass
+    return False
+
 
 # PASTĀVĪGAIS TUMSAS (SHROUD) SLĀNIS
 shroud = pygame.Surface((screen_w, screen_h), pygame.SRCALPHA)
@@ -147,8 +185,8 @@ def trigger_save_anim(msg):
     save_notification_timer = 90
     save_notification_msg = msg
 
-# funkcija save_game_csv pieņem str tipa vērtību name, str tipa vērtību char_type, Player tipa vērtību p un SkillTree tipa vērtību s_tree un atgriež None tipa vērtību None
-def save_game_csv(name, char_type, p, s_tree):
+# funkcija save_game_csv pieņem str tipa vērtību name, str tipa vērtību char_type, Player tipa vērtību p, SkillTree tipa vērtību s_tree un str tipa vērtību password un atgriež None tipa vērtību None
+def save_game_csv(name, char_type, p, s_tree, password=""):
     # [SAREŽĢĪTA LOĢIKA]: CSV datu atjaunināšana
     # Šis kods vispirms nolasa visu CSV failu un pārvērš to par vārdnīcu sarakstu (list of dictionaries).
     # Tas ļauj saglabāt iepriekšējo spēlētāju datus neskartus, kamēr mēs atjauninām tikai konkrētā spēlētāja rindu.
@@ -164,7 +202,7 @@ def save_game_csv(name, char_type, p, s_tree):
 
     # Izveido jaunu vārdnīcu ar aktuālajiem spēlētāja datiem
     new_p_data = {
-        "name": name, "char_type": char_type, "money": p.money,
+        "name": name, "password": password, "char_type": char_type, "money": p.money,
         "max_health": p.max_health, "radius": p.attack_radius,
         "speed": p.speed, "damage": getattr(p, 'damage', 1.0),
         "multi": getattr(p, 'projectile_count', 1),
@@ -184,6 +222,10 @@ def save_game_csv(name, char_type, p, s_tree):
     found_p = False
     for i, row in enumerate(p_rows):
         if row.get("name") == name and row.get("char_type") == char_type:
+            # Ja parole nav sniegta, saglabāt veco paroli
+            if not password:
+                password = row.get("password", "")
+            new_p_data["password"] = password
             p_rows[i] = new_p_data
             found_p = True
             break
@@ -289,11 +331,21 @@ while True:
 
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
-                if user_name and player.char_type: save_game_csv(user_name, player.char_type, player, skills)
-                pygame.quit(); sys.exit()
+                # ESC tikai iziet no spēles, ja NAV playing stāvoklī (pause menu tiek apstrādāts atsevišķi)
+                if game_state != "playing":
+                    if user_name and player.char_type: save_game_csv(user_name, player.char_type, player, skills, user_password)
+                    pygame.quit(); sys.exit()
 
             if game_state == "menu":
-                if event.key == pygame.K_RETURN and user_name.strip(): game_state = "char_select"
+                if event.key == pygame.K_RETURN and user_name.strip():
+                    # Pārbauda, vai spēlētājs jau eksistē. Ja jā, lūdz paroli; ja nē, jaunas konta izveidošana
+                    if player_exists_in_csv(user_name.strip()):
+                        is_new_account = False
+                    else:
+                        is_new_account = True
+                    game_state = "password_input"
+                    user_password = ""
+                    password_error_msg = ""
                 elif event.key == pygame.K_BACKSPACE: user_name = user_name[:-1]
                 else: 
                     # [SAREŽĢĪTA LOĢIKA]: Ierobežot vārda garumu
@@ -302,6 +354,36 @@ while True:
                     # lai novērstu "Shift" vai "Tab" taustiņu kā tukšu simbolu pievienošanu.
                     if len(user_name) < 24 and len(event.unicode) > 0:
                         user_name += event.unicode
+
+            elif game_state == "password_input":
+                if event.key == pygame.K_RETURN and user_password.strip():
+                    if not is_new_account:
+                        # Pārbauda paroli esošajam kontam
+                        if check_password(user_name.strip(), user_password.strip()):
+                            game_state = "char_select"
+                            password_error_msg = ""
+                        else:
+                            password_error_msg = "Wrong password!"
+                            password_error_timer = 120
+                            user_password = ""
+                    else:
+                        # Jauns konts - pārbauda paroles garumu
+                        if len(user_password.strip()) < 4:
+                            password_error_msg = "Password too short (min 4)!"
+                            password_error_timer = 120
+                            user_password = ""
+                        else:
+                            game_state = "char_select"
+                            password_error_msg = ""
+                elif event.key == pygame.K_BACKSPACE: user_password = user_password[:-1]
+                elif event.key == pygame.K_ESCAPE:
+                    game_state = "menu"
+                    user_name = ""
+                    user_password = ""
+                    password_error_msg = ""
+                else:
+                    if len(user_password) < 32 and len(event.unicode) > 0:
+                        user_password += event.unicode
 
             elif game_state == "playing" and event.key == pygame.K_SPACE:
                 if getattr(player, 'dash_unlocked', False) and player.dash_cooldown <= 0:
@@ -319,13 +401,34 @@ while True:
                     player.rect.clamp_ip(screen.get_rect())
                     player.dash_cooldown = 60
 
+            elif game_state == "playing" and event.key == pygame.K_p:
+                game_state = "paused"
+
+            elif game_state == "paused" and event.key == pygame.K_ESCAPE:
+                game_state = "playing"
+
         if event.type == pygame.MOUSEBUTTONDOWN:
-            if game_state == "char_select":
+            if game_state == "paused":
+                if pause_save_btn.collidepoint(event.pos):
+                    save_game_csv(user_name, player.char_type, player, skills, user_password)
+                    trigger_save_anim("GAME SAVED!")
+                elif pause_resume_btn.collidepoint(event.pos):
+                    game_state = "playing"
+                elif pause_quit_btn.collidepoint(event.pos):
+                    save_game_csv(user_name, player.char_type, player, skills, user_password)
+                    game_state = "menu"
+                    user_name = ""
+                    user_password = ""
+                    player = Player()
+            elif game_state == "char_select":
                 for i in range(3):
                     rect = pygame.Rect(screen_w // 2 - 450 + (i * 310), 200, 280, 400)
                     if rect.collidepoint(event.pos):
                         sel = ["wizard", "shadow", "dwarf"][i]
                         player.setup_class(sel)
+                        # Ja jauns konts, saglabā paroli ar spēlētāja datiem
+                        if is_new_account:
+                            save_game_csv(user_name, sel, player, skills, user_password)
                         load_game_csv(user_name, sel, player, skills)
                         enemies.clear(); bosses.clear(); projectiles.clear(); coins.clear(); chests.clear(); active_swings.clear()
                         current_wave, max_enemies, time_freeze_timer = 1, 4, 0
@@ -342,7 +445,7 @@ while True:
                     for _ in range(max_enemies): spawn_enemy()
                     game_state = "playing"
                 elif result == "saved":
-                    save_game_csv(user_name, player.char_type, player, skills)
+                    save_game_csv(user_name, player.char_type, player, skills, user_password)
                     trigger_save_anim("UZLABOTS!")
 
     # --- IZVĒLNE ---
@@ -410,6 +513,44 @@ while True:
         else:
             screen.blit(entry_font.render("No leaderboard data yet", True, (150, 150, 150)), (lb_x + 20, lb_y + 60))
 
+    # --- PAROLES IEVADS ---
+    elif game_state == "password_input":
+        if menu_bg:
+            screen.blit(menu_bg, (0, 0))
+        else:
+            screen.fill((5, 5, 15))
+
+        # Parāda virsrakstu (jauns konts vai esošs konts)
+        if is_new_account:
+            title = pygame.font.SysFont("Impact", 60).render("CREATE PASSWORD", True, (0, 255, 150))
+        else:
+            title = pygame.font.SysFont("Impact", 60).render("ENTER PASSWORD", True, (0, 255, 150))
+        screen.blit(title, (screen_w // 2 - title.get_width() // 2, screen_h // 2 - 150))
+
+        # Paroles ievada logs
+        box_w, box_h = 400, 50
+        box_rect = pygame.Rect(screen_w // 2 - box_w // 2, screen_h // 2, box_w, box_h)
+        pygame.draw.rect(screen, (20, 20, 35), box_rect, border_radius=10)
+        pygame.draw.rect(screen, (0, 255, 150), box_rect, 2, border_radius=10)
+        
+        # Rāda paroli ar aizklātiem rakstzīmēm (*)
+        masked_password = "*" * len(user_password) + "|"
+        p_txt = pygame.font.SysFont("Arial", 28).render(masked_password, True, (255, 255, 255))
+        screen.blit(p_txt, p_txt.get_rect(center=box_rect.center))
+        
+        # Instrukcijas
+        if is_new_account:
+            hint = pygame.font.SysFont("Arial", 20).render("Set a password (min 4 characters) and press ENTER", True, (150, 150, 150))
+        else:
+            hint = pygame.font.SysFont("Arial", 20).render("Enter your password and press ENTER", True, (150, 150, 150))
+        screen.blit(hint, hint.get_rect(center=(screen_w // 2, screen_h // 2 + 90)))
+        
+        # Kļūdas ziņojums
+        if password_error_timer > 0:
+            error_txt = pygame.font.SysFont("Arial", 24, bold=True).render(password_error_msg, True, (255, 0, 0))
+            screen.blit(error_txt, error_txt.get_rect(center=(screen_w // 2, screen_h // 2 + 150)))
+            password_error_timer -= 1
+
     # --- VAROŅA IZVĒLE ---
     elif game_state == "char_select":
         if char_select_bg:
@@ -449,7 +590,7 @@ while True:
         player.energy = max(0, min(player.energy, player.max_energy))
         if player.energy <= 0 or player.health <= 0:
             player.health = 0
-            save_game_csv(user_name, player.char_type, player, skills)
+            save_game_csv(user_name, player.char_type, player, skills, user_password)
             game_state, death_timer = "dead", 120
             continue
 
@@ -649,6 +790,45 @@ while True:
             t = pygame.font.SysFont("Arial", 28, bold=True).render(save_notification_msg, True, (0, 255, 150))
             screen.blit(t, t.get_rect(center=(screen_w // 2, 100)))
             save_notification_timer -= 1
+
+    elif game_state == "paused":
+        # Pūš semi-transparent overlay pār spēles ekrānu
+        overlay = pygame.Surface((screen_w, screen_h), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 150))
+        screen.blit(overlay, (0, 0))
+        
+        # Pause menu title
+        title = pygame.font.SysFont("Impact", 80).render("PAUSED", True, (0, 255, 150))
+        screen.blit(title, (screen_w // 2 - title.get_width() // 2, screen_h // 2 - 150))
+        
+        # Pause menu buttons
+        btn_w, btn_h = 200, 50
+        btn_x = screen_w // 2 - btn_w // 2
+        
+        # Save button
+        pause_save_btn = pygame.Rect(btn_x, screen_h // 2 - 20, btn_w, btn_h)
+        pygame.draw.rect(screen, (50, 150, 255), pause_save_btn, border_radius=10)
+        pygame.draw.rect(screen, (0, 255, 150), pause_save_btn, 2, border_radius=10)
+        save_btn_text = pygame.font.SysFont("Arial", 28, bold=True).render("SAVE", True, (0, 0, 0))
+        screen.blit(save_btn_text, save_btn_text.get_rect(center=pause_save_btn.center))
+        
+        # Resume button
+        pause_resume_btn = pygame.Rect(btn_x, screen_h // 2 + 50, btn_w, btn_h)
+        pygame.draw.rect(screen, (50, 200, 100), pause_resume_btn, border_radius=10)
+        pygame.draw.rect(screen, (0, 255, 150), pause_resume_btn, 2, border_radius=10)
+        resume_btn_text = pygame.font.SysFont("Arial", 28, bold=True).render("RESUME", True, (0, 0, 0))
+        screen.blit(resume_btn_text, resume_btn_text.get_rect(center=pause_resume_btn.center))
+        
+        # Quit button
+        pause_quit_btn = pygame.Rect(btn_x, screen_h // 2 + 120, btn_w, btn_h)
+        pygame.draw.rect(screen, (200, 50, 50), pause_quit_btn, border_radius=10)
+        pygame.draw.rect(screen, (0, 255, 150), pause_quit_btn, 2, border_radius=10)
+        quit_btn_text = pygame.font.SysFont("Arial", 28, bold=True).render("QUIT", True, (0, 0, 0))
+        screen.blit(quit_btn_text, quit_btn_text.get_rect(center=pause_quit_btn.center))
+        
+        # Hint text
+        hint = pygame.font.SysFont("Arial", 18).render("Press ESC to Resume", True, (150, 150, 150))
+        screen.blit(hint, (screen_w // 2 - hint.get_width() // 2, screen_h - 50))
 
     elif game_state == "dead":
         screen.fill((5, 5, 15))
