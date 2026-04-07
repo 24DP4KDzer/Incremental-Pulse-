@@ -16,7 +16,7 @@ def draw_main_menu(screen, screen_w, screen_h, menu_bg, menu_logo, play_img, set
         screen.blit(menu_logo, logo_rect)
     
     # play poga
-    play_btn = pygame.Rect(screen_w // 2 - 100, screen_h // 2 + 50, 2000, 900)  # Palielināts platums, lai atbilstu jaunajam attēla izmēram
+    play_btn = pygame.Rect(screen_w // 2 - 100, screen_h // 2 + 50, 300, 80)  # Palielināts platums, lai atbilstu jaunajam attēla izmēram
     if play_img:
         screen.blit(play_img, play_btn.topleft)
     else:
@@ -26,7 +26,7 @@ def draw_main_menu(screen, screen_w, screen_h, menu_bg, menu_logo, play_img, set
         screen.blit(play_text, play_text.get_rect(center=play_btn.center))
 
     # iestatījumu poga
-    settings_btn = pygame.Rect(screen_w // 2 - 100, screen_h // 2 + 140, 2000, 900) 
+    settings_btn = pygame.Rect(screen_w // 2 - 115, screen_h // 2 + 150, 300, 80) 
     if settings_img:
         screen.blit(settings_img, settings_btn.topleft)
     else:
@@ -110,7 +110,7 @@ def draw_login_screen(screen, screen_w, screen_h, menu_bg, user_name, user_passw
 
 # funkcija draw_settings_overlay pieņem pygame.Surface tipa vērtību screen, int tipa vērtību screen_w, int tipa vērtību screen_h, int tipa vērtību master_volume, int tipa vērtību music_volume un int tipa vērtību sfx_volume un atgriež pygame.Rect tipa vērtību back_button_rect
 def draw_settings_overlay(screen, screen_w, screen_h, master_volume, music_volume, sfx_volume):
-    """Draw the settings overlay"""
+
     overlay = pygame.Surface((screen_w, screen_h), pygame.SRCALPHA)
     overlay.fill((0, 0, 0, 200))
     screen.blit(overlay, (0, 0))

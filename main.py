@@ -61,7 +61,8 @@ pass_clear_btn = pygame.Rect(0, 0, 40, 40)
 
 play_btn = pygame.Rect(0, 0, 200, 60) 
 settings_btn = pygame.Rect(0, 0, 200, 60)
-back_btn = pygame.Rect(0, 0, 150, 50)
+back_btn = pygame.Rect(0, 0, 0, 0)
+show_settings = False
 
 
 # --- SETTINGS ---
@@ -69,6 +70,7 @@ show_settings = False
 master_volume = 100
 music_volume = 100
 sfx_volume = 100
+
 pause_save_btn = pygame.Rect(0, 0, 0, 0)
 pause_resume_btn = pygame.Rect(0, 0, 0, 0)
 pause_quit_btn = pygame.Rect(0, 0, 0, 0)
@@ -178,8 +180,8 @@ if game_bg:
     game_bg.set_alpha(180)
 
 menu_logo = load_logo(get_path("photos/logo.png"), screen_w * 0.6, screen_h * 0.3)
-play_img = load_sprite(get_path("photos/play_button.png"), size=(1600, 60))
-settings_img = load_sprite(get_path("photos/settings_button.png"), size=(200, 60))
+play_img = load_sprite(get_path("photos/play_button.png"), size=(300, 80))
+settings_img = load_sprite(get_path("photos/settings_button.png"), size=(300, 80))
 
 # Varoņu spreiti
 wizard_ui = load_sprite(get_path("photos/wizard_right.png"))
@@ -566,6 +568,12 @@ while True:
 
         if event.type == pygame.MOUSEBUTTONDOWN:
             print(f"Pašreizējais stāvoklis: {game_state}")
+            if show_settings:
+                if back_btn.collidepoint(event.pos):
+                    show_settings = False # Aizver iestatījumus
+                    print("Back poga nospiesta!") # Pārbaudei konsolē
+                    continue
+                
             if game_state == "main_menu":
                 if play_btn.collidepoint(event.pos):
                     game_state = "menu"
@@ -574,7 +582,7 @@ while True:
                     input_field_active = None
                 elif settings_btn.collidepoint(event.pos):
                     show_settings = True
-            elif show_settings:
+            
                 if back_btn.collidepoint(event.pos):
                     show_settings = False
             elif game_state == "menu":
