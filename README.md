@@ -54,4 +54,4 @@ A high-intensity, top-down survival roguelike built in **Python** and **Pygame**
 
 # Launch the game
 
-"py -3.12 c:\Users\**user**\Documents\Incremental-Pulse-\main.py"
+"py -3.12 c:\Users\**user**\Documents\Incremental-Pulse--main\main.py"
