@@ -109,7 +109,7 @@ def draw_login_screen(screen, screen_w, screen_h, menu_bg, user_name, user_passw
 
 
 # funkcija draw_settings_overlay pieņem pygame.Surface tipa vērtību screen, int tipa vērtību screen_w, int tipa vērtību screen_h, int tipa vērtību master_volume, int tipa vērtību music_volume un int tipa vērtību sfx_volume un atgriež pygame.Rect tipa vērtību back_button_rect
-def draw_settings_overlay(screen, screen_w, screen_h, master_volume, music_volume, sfx_volume):
+def draw_settings_overlay(screen, screen_w, screen_h, master_volume, music_volume, sfx_volume, back_img):
 
     overlay = pygame.Surface((screen_w, screen_h), pygame.SRCALPHA)
     overlay.fill((0, 0, 0, 200))
