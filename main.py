@@ -11,6 +11,15 @@ from projectile import Projectile
 from skill_tree import SkillTree
 from boss import Boss
 
+# Iegūst skripta direktoriju, lai izkrautos failus no pareizuma ceļa neatkarīgi no darba direktorijas
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+os.chdir(SCRIPT_DIR)  # Mainīt darba direktoriju uz skripta vietu
+
+# funkcija get_path pieņem str tipa vērtību relative_path un atgriež str tipa vērtību full_path
+def get_path(relative_path):
+    # Atgriež pilnu ceļu, ņemot vērā skripta direktoriju
+    return os.path.join(SCRIPT_DIR, relative_path)
+
 # 1. INICIALIZĀCIJA
 pygame.init()
 screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
@@ -103,18 +112,18 @@ def load_logo(path, max_w, max_h):
         return None
 
 # --- IELĀDĒT VISUS AKTĪVUS ---
-menu_bg        = load_bg("photos/menu_bg.png")
-char_select_bg = load_bg("photos/char_select_bg.png")
-game_bg        = load_bg("photos/bg.png")
+menu_bg        = load_bg(get_path("photos/menu_bg.png"))
+char_select_bg = load_bg(get_path("photos/char_select_bg.png"))
+game_bg        = load_bg(get_path("photos/bg.png"))
 if game_bg:
     game_bg.set_alpha(180)
 
-menu_logo = load_logo("photos/logo.png", screen_w * 0.6, screen_h * 0.3)
+menu_logo = load_logo(get_path("photos/logo.png"), screen_w * 0.6, screen_h * 0.3)
 
 # Varoņu spreiti
-wizard_ui = load_sprite("photos/wizard_right.png")
-shadow_ui = load_sprite("photos/Shadow_up.png")
-dwarf_ui  = load_sprite("photos/dwarf_forward.png")
+wizard_ui = load_sprite(get_path("photos/wizard_right.png"))
+shadow_ui = load_sprite(get_path("photos/Shadow_up.png"))
+dwarf_ui  = load_sprite(get_path("photos/dwarf_forward.png"))
 
 freeze_surf = pygame.Surface((screen_w, screen_h), pygame.SRCALPHA)
 freeze_surf.fill((0, 150, 255, 40))

@@ -78,7 +78,7 @@ class SkillTree:
             elif skill_node["id"] == "armor": player.armor = getattr(player, 'armor', 0) + lvl
             elif skill_node["id"] == "thorns": player.thorns = getattr(player, 'thorns', 0) + lvl
             elif skill_node["id"] == "regen": player.regen = getattr(player, 'regen', 0) + (0.01 * lvl)
-            elif skill_node["id"] == "range": player.attack_radius = min(50, player.attack_radius + (15 * lvl))
+            elif skill_node["id"] == "range": player.attack_radius = min(250, player.attack_radius + (15 * lvl))
             elif skill_node["id"] == "multi": player.projectile_count = min(5, 1 + lvl)
             elif skill_node["id"] == "speed": player.speed += (0.4 * lvl) # Izlabots ātruma limits
             elif skill_node["id"] == "damage": player.damage += 0.5 * lvl
