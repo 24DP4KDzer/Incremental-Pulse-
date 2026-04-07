@@ -20,8 +20,15 @@ os.chdir(SCRIPT_DIR)  # Mainīt darba direktoriju uz skripta vietu
 
 # funkcija get_path pieņem str tipa vērtību relative_path un atgriež str tipa vērtību full_path
 def get_path(relative_path):
-    # Atgriež pilnu ceļu, ņemot vērā skripta direktoriju
-    return os.path.join(SCRIPT_DIR, relative_path)
+    # Pārbauda, vai strādājam no .exe vai no koda
+    if getattr(sys, 'frozen', False):
+        # Ja tas ir .exe, meklējam mapi, kurā atrodas .exe
+        base_path = os.path.dirname(sys.executable)
+    else:
+        # Ja tas ir kods, meklējam tur, kur ir main.py
+        base_path = os.path.dirname(os.path.abspath(__file__))
+
+    return os.path.join(base_path, relative_path)
 
 # 1. INICIALIZĀCIJA
 pygame.init()
