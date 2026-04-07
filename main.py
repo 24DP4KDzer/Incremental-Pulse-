@@ -10,7 +10,8 @@ from action import Coin, SpecialCoin, HpCoin, Chest
 from projectile import Projectile
 from skill_tree import SkillTree
 from boss import Boss
-from screens import draw_main_menu, draw_login_screen, draw_settings_overlay, draw_death_screen, draw_pause_menu
+from screens.menu_screen import draw_main_menu, draw_login_screen, draw_settings_overlay
+from screens.pause_death_screen import draw_death_screen, draw_pause_menu
 from fonts import render_pixel_text, UI_LARGE, UI_MEDIUM, UI_NORMAL, UI_SMALL, UI_TINY, GAME_STATS, GAME_SCORE
 
 # Iegūst skripta direktoriju, lai izkrautos failus no pareizuma ceļa neatkarīgi no darba direktorijas
@@ -56,9 +57,13 @@ pass_input_rect = pygame.Rect(0, 0, 400, 50)
 user_clear_btn = pygame.Rect(0, 0, 40, 40)
 pass_clear_btn = pygame.Rect(0, 0, 40, 40)
 # --- MENU BUTTONS ---
-play_btn = pygame.Rect(0, 0, 200, 60)
+
+
+play_btn = pygame.Rect(0, 0, 200, 60) 
 settings_btn = pygame.Rect(0, 0, 200, 60)
 back_btn = pygame.Rect(0, 0, 150, 50)
+
+
 # --- SETTINGS ---
 show_settings = False
 master_volume = 100
@@ -68,7 +73,7 @@ pause_save_btn = pygame.Rect(0, 0, 0, 0)
 pause_resume_btn = pygame.Rect(0, 0, 0, 0)
 pause_quit_btn = pygame.Rect(0, 0, 0, 0)
 
-# funkcija player_exists_in_csv pieņem str tipa vērtību name un atgriež bool tipa vērtību exists
+
 # funkcija player_exists_in_csv pieņem str tipa vērtību name un atgriež bool tipa vērtību exists
 def player_exists_in_csv(name):
     # Pārbauda, vai spēlētājs ar doto vārdu jau eksistē CSV failā
@@ -105,24 +110,24 @@ def apply_boss_drop(player, wave):
     drop_type = random.choice(["damage", "speed", "health", "armor", "lifesteal"])
     
     if drop_type == "damage":
-        bonus = int(2 + (wave * 0.5))
+        bonus = int(0.1 + (wave * 0.2))
         player.damage += bonus
         trigger_boss_drop_anim(f"DAMAGE BOOST! +{bonus}")
     elif drop_type == "speed":
-        bonus = round(1.5 + (wave * 0.2), 1)
+        bonus = round(0.2 + (wave * 0.2), 1)
         player.speed += bonus
         trigger_boss_drop_anim(f"SPEED BOOST! +{bonus}")
     elif drop_type == "health":
-        health_boost = int(50 + (wave * 10))
+        health_boost = int(5 + (wave * 0.05))
         player.max_health += health_boost
         player.health += health_boost
         trigger_boss_drop_anim(f"HEALTH BOOST! +{health_boost}")
     elif drop_type == "armor":
-        armor_boost = 2 + (wave // 2)
+        armor_boost = 1 + (wave // 8) 
         player.armor = getattr(player, 'armor', 0) + armor_boost
         trigger_boss_drop_anim(f"ARMOR BOOST! +{armor_boost}")
     elif drop_type == "lifesteal":
-        bonus = round(wave * 0.5, 1)
+        bonus = round(wave * 0.2, 1)
         player.lifesteal = getattr(player, 'lifesteal', 0) + bonus
         trigger_boss_drop_anim(f"LIFESTEAL BOOST! +{bonus}")
 
@@ -153,7 +158,7 @@ def load_sprite(path, size=(280, 280)):
         surf.fill((255, 0, 255))
         return surf
 
-# funkcija load_logo pieņem str tipa vērtību path, int tipa vērtību max_w un int tipa vērtību max_h un atgriež pygame.Surface tipa vērtību img
+
 # funkcija load_logo pieņem str tipa vērtību path, int tipa vērtību max_w un int tipa vērtību max_h un atgriež pygame.Surface tipa vērtību logo_image
 def load_logo(path, max_w, max_h):
     try:
@@ -173,6 +178,8 @@ if game_bg:
     game_bg.set_alpha(180)
 
 menu_logo = load_logo(get_path("photos/logo.png"), screen_w * 0.6, screen_h * 0.3)
+play_img = load_sprite(get_path("photos/play_button.png"), size=(1600, 60))
+settings_img = load_sprite(get_path("photos/settings_button.png"), size=(200, 60))
 
 # Varoņu spreiti
 wizard_ui = load_sprite(get_path("photos/wizard_right.png"))
@@ -181,6 +188,8 @@ dwarf_ui  = load_sprite(get_path("photos/dwarf_forward.png"))
 
 freeze_surf = pygame.Surface((screen_w, screen_h), pygame.SRCALPHA)
 freeze_surf.fill((0, 150, 255, 40))
+
+skills = SkillTree(screen_w, screen_h)
 
 class MeleeSwing:
     # funkcija __init__ pieņem MeleeSwing tipa vērtību self, Player tipa vērtību owner, list tipa vērtību enemies un int tipa vērtību damage un atgriež None tipa vērtību None
@@ -442,7 +451,7 @@ def get_dist_to_rect(point, rect):
 
 
 player = Player()
-skills = SkillTree(screen_w, screen_h)
+
 bosses, enemies, projectiles, coins, chests, active_swings, special_coins, hp_drops = [], [], [], [], [], [], [], []
 boss_energy, boss_goal, max_enemies = 0, 100, 4
 time_freeze_timer = 0
@@ -471,6 +480,7 @@ while True:
     m_click = pygame.mouse.get_pressed()
     flicker_val += 0.08
 
+
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit(); sys.exit()
@@ -484,16 +494,16 @@ while True:
 
             if game_state == "menu":
                 if event.key == pygame.K_TAB:
-                    # Switch between username and password fields
+                    # izveleties starp username un password laukiem ar TAB
                     if input_field_active == "username":
                         input_field_active = "password"
                     else:
                         input_field_active = "username"
                 elif event.key == pygame.K_RETURN:
-                    # Allow login with ENTER from any field
+                    # atlauja apstiprināt ievadi ar ENTER
                     if user_name.strip() and user_password.strip():
                         if not player_exists_in_csv(user_name.strip()):
-                            # New account
+                            # jauns konts - pārbauda paroli un izveido jaunu ierakstu CSV failā
                             if len(user_password.strip()) < 4:
                                 password_error_msg = "Password too short (min 4)!"
                                 password_error_timer = 120
@@ -503,7 +513,7 @@ while True:
                                 game_state = "char_select"
                                 password_error_msg = ""
                         else:
-                            # Existing account - check password
+                            # vecs konts - pārbauda paroli un ielādē datus, ja parole pareiza
                             if check_password(user_name.strip(), user_password.strip()):
                                 is_new_account = False
                                 game_state = "char_select"
@@ -522,7 +532,7 @@ while True:
                         user_password = user_password[:-1]
                 else:
                     if len(event.unicode) > 0:
-                        # Auto-focus username field if nothing is focused
+                        # automatiski aktivizē ievades lauku, ja lietotājs sāk rakstīt, un ierobežo ievadi līdz 24 rakstzīmēm
                         if not input_field_active:
                             input_field_active = "username"
                         if input_field_active == "username" and len(user_name) < 24:
@@ -555,6 +565,7 @@ while True:
                 game_state = "playing"
 
         if event.type == pygame.MOUSEBUTTONDOWN:
+            print(f"Pašreizējais stāvoklis: {game_state}")
             if game_state == "main_menu":
                 if play_btn.collidepoint(event.pos):
                     game_state = "menu"
@@ -614,7 +625,9 @@ while True:
 
     # --- MAIN MENU ---
     if game_state == "main_menu":
-        play_btn, settings_btn = draw_main_menu(screen, screen_w, screen_h, menu_bg, menu_logo)
+        # Šī rinda zīmēs izvēlni nepārtraukti, nevis tikai pie klikšķa
+        play_btn, settings_btn = draw_main_menu(screen, screen_w, screen_h, menu_bg, menu_logo, play_img, settings_img)
+    
     
     # --- SETTINGS OVERLAY (drawn on top of current screen) ---
     if show_settings and game_state != "playing":

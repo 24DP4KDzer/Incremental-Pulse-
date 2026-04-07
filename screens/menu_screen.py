@@ -2,8 +2,7 @@ import pygame
 from fonts import render_pixel_text, UI_MEDIUM
 
 # funkcija draw_main_menu pieņem pygame.Surface tipa vērtību screen, int tipa vērtību screen_w, int tipa vērtību screen_h, pygame.Surface tipa vērtību menu_bg un pygame.Surface tipa vērtību menu_logo un atgriež tuple tipa vērtību button_rects
-def draw_main_menu(screen, screen_w, screen_h, menu_bg, menu_logo):
-    """Draw the main menu with Play and Settings buttons"""
+def draw_main_menu(screen, screen_w, screen_h, menu_bg, menu_logo, play_img, settings_img):
     if menu_bg:
         screen.blit(menu_bg, (0, 0))
     else:
@@ -16,27 +15,33 @@ def draw_main_menu(screen, screen_w, screen_h, menu_bg, menu_logo):
         screen.blit(shadow_surf, (logo_rect.x + 10, logo_rect.y + 5))
         screen.blit(menu_logo, logo_rect)
     
-    # Play Button
-    play_btn = pygame.Rect(screen_w // 2 - 100, screen_h // 2 + 50, 200, 60)
-    pygame.draw.rect(screen, (50, 200, 100), play_btn, border_radius=10)
-    pygame.draw.rect(screen, (0, 255, 150), play_btn, 2, border_radius=10)
-    play_text = render_pixel_text("PLAY", UI_MEDIUM, (0, 0, 0), bold=True)
-    screen.blit(play_text, play_text.get_rect(center=play_btn.center))
-    
-    # Settings Button
-    settings_btn = pygame.Rect(screen_w // 2 - 100, screen_h // 2 + 140, 200, 60)
-    pygame.draw.rect(screen, (150, 100, 255), settings_btn, border_radius=10)
-    pygame.draw.rect(screen, (0, 255, 150), settings_btn, 2, border_radius=10)
-    settings_text = render_pixel_text("SETTINGS", UI_MEDIUM, (0, 0, 0), bold=True)
-    screen.blit(settings_text, settings_text.get_rect(center=settings_btn.center))
-    
+    # play poga
+    play_btn = pygame.Rect(screen_w // 2 - 100, screen_h // 2 + 50, 2000, 900)  # Palielināts platums, lai atbilstu jaunajam attēla izmēram
+    if play_img:
+        screen.blit(play_img, play_btn.topleft)
+    else:
+        # ja netiek ielaadets attels, uzzimejam rezerves pogu
+        pygame.draw.rect(screen, (50, 200, 100), play_btn, border_radius=10) 
+        play_text = render_pixel_text("PLAY", UI_MEDIUM, (0, 0, 0), bold=True)
+        screen.blit(play_text, play_text.get_rect(center=play_btn.center))
+
+    # iestatījumu poga
+    settings_btn = pygame.Rect(screen_w // 2 - 100, screen_h // 2 + 140, 2000, 900) 
+    if settings_img:
+        screen.blit(settings_img, settings_btn.topleft)
+    else:
+        # ja netiek ielaadets attels, uzzimejam rezerves pogu
+        pygame.draw.rect(screen, (150, 100, 255), settings_btn, border_radius=10)
+        settings_text = render_pixel_text("SETTINGS", UI_MEDIUM, (0, 0, 0), bold=True)
+        screen.blit(settings_text, settings_text.get_rect(center=settings_btn.center))
+
     return play_btn, settings_btn
 
 
-# funkcija draw_login_screen pieņem pygame.Surface tipa vērtību screen, int tipa vērtību screen_w, int tipa vērtību screen_h, pygame.Surface tipa vērtību menu_bg, str tipa vērtību user_name, str tipa vērtību user_password, str tipa vērtību input_field_active, str tipa vērtību password_error_msg, int tipa vērtību password_error_timer un pygame.Surface tipa vērtību menu_logo un atgriež tuple tipa vērtību input_rects
+# funkcija draw_login_screen paņem pygame.Surface tipa vērtību screen, int tipa vērtību screen_w, int tipa vērtību screen_h, pygame.Surface tipa vērtību menu_bg, str tipa vērtību user_name, str tipa vērtību user_password, str tipa vērtību input_field_active, str tipa vērtību password_error_msg, int tipa vērtību password_error_timer un pygame.Surface tipa vērtību menu_logo un atgriež tuple tipa vērtību input_rects
 def draw_login_screen(screen, screen_w, screen_h, menu_bg, user_name, user_password, 
                       input_field_active, password_error_msg, password_error_timer, menu_logo):
-    """Draw the login/registration screen"""
+
     if menu_bg:
         screen.blit(menu_bg, (0, 0))
     else:
