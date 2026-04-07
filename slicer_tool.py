@@ -5,7 +5,7 @@ pygame.init()
 
 # 1. Load the image
 # Make sure this matches your exact file path!
-image_path = "photos/allOfEnemies.png"
+image_path = "photos/allOfDwarf.png"
 try:
     sheet = pygame.image.load(image_path)
 except:
@@ -14,18 +14,24 @@ except:
 
 # Get image size and create a window
 img_w, img_h = sheet.get_size()
-screen = pygame.display.set_mode((max(800, img_w), max(800, img_h)))
-pygame.display.set_caption("Sprite Slicer Tool")
 
+scale = 0.5
+new_w = int(img_w * scale)
+new_h = int(img_h * scale)
+
+sheet = pygame.transform.scale(sheet, (new_w, new_h))
+screen = pygame.display.set_mode((new_w, new_h))
+
+pygame.display.set_caption("Sprite Slicer Tool")
 # ==========================================
 # 2. TWEAK THESE NUMBERS UNTIL THE RED BOXES FIT!
 # ==========================================
-frame_w = 190    # Width of the box
-frame_h = 225       # Height of the box
-start_x = 62     # Distance from left edge to the first box
-start_y = 310    # Distance from top edge to the first box
-padding_x = 42     # Empty space between columns
-padding_y = 43    # Empty space between rows
+frame_w = 200    # Width of the box
+frame_h = 276       # Height of the box
+start_x = 0     # Distance from left edge to the first box
+start_y = 0   # Distance from top edge to the first box
+padding_x = 300     # Empty space between columns
+padding_y = 50    # Empty space between rows
 num_frames = 2     # Number of columns
 # ==========================================
 

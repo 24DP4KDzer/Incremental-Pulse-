@@ -121,7 +121,7 @@ class SkillTree:
                 elif skill_node["id"] == "regen":
                     player.regen = getattr(player, 'regen', 0) + 0.01
                 elif skill_node["id"] == "range":
-                    player.attack_radius = min(500, player.attack_radius + 15)
+                    player.attack_radius = min(250, player.attack_radius + 15)
                 elif skill_node["id"] == "multi":
                     player.projectile_count = min(5, getattr(player, 'projectile_count', 1) + 1)
                 elif skill_node["id"] == "damage":

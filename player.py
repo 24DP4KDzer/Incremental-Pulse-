@@ -115,13 +115,13 @@ class Player:
             
             elif char_type == "dwarf":
                 sheet = pygame.image.load("photos/allOfDwarf.png").convert_alpha()
-                frame_w = 100 
-                frame_h = 143 
-                start_x = 258 
-                start_y = 252 
-                padding_x = 47 
-                padding_y = 55 
-                num_frames = 2 
+                frame_w = 200    # Width of the box
+                frame_h = 276       # Height of the box
+                start_x = 0     # Distance from left edge to the first box
+                start_y = 0   # Distance from top edge to the first box
+                padding_x = 300     # Empty space between columns
+                padding_y = 50    # Empty space between rows
+                num_frames = 2     # Number of columns
                 
             else:
                 sheet = pygame.image.load(f"photos/{char_type}_sheet.png").convert_alpha()
