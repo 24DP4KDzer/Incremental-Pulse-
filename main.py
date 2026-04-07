@@ -182,6 +182,8 @@ if game_bg:
 menu_logo = load_logo(get_path("photos/logo.png"), screen_w * 0.6, screen_h * 0.3)
 play_img = load_sprite(get_path("photos/play_button.png"), size=(300, 80))
 settings_img = load_sprite(get_path("photos/settings_button.png"), size=(300, 80))
+back_img = load_sprite(get_path("photos/back_button.png"), size=(150, 50))
+
 
 # Varoņu spreiti
 wizard_ui = load_sprite(get_path("photos/wizard_right.png"))
@@ -573,7 +575,7 @@ while True:
                     show_settings = False # Aizver iestatījumus
                     print("Back poga nospiesta!") # Pārbaudei konsolē
                     continue
-                
+
             if game_state == "main_menu":
                 if play_btn.collidepoint(event.pos):
                     game_state = "menu"
@@ -657,7 +659,7 @@ while True:
     
     # --- SETTINGS OVERLAY (drawn on top of current screen) ---
     if show_settings and game_state != "playing":
-        back_btn = draw_settings_overlay(screen, screen_w, screen_h, master_volume, music_volume, sfx_volume)
+        back_btn = draw_settings_overlay(screen, screen_w, screen_h, master_volume, music_volume, sfx_volume, back_img)
 
     # --- MENU + LOGIN/REGISTER (MERGED) ---
     elif game_state == "menu":
