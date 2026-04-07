@@ -34,6 +34,8 @@ if not os.path.exists("data"):
 
 save_notification_timer = 0
 save_notification_msg = ""
+boss_drop_timer = 0
+boss_drop_msg = ""
 current_wave = 1
 game_state, user_name = "menu", ""
 user_password = ""
@@ -72,6 +74,34 @@ def check_password(name, password):
         except:
             pass
     return False
+
+# funkcija apply_boss_drop pieņem Player tipa vērtību player un int tipa vērtību wave un atgriež None tipa vērtību None
+def apply_boss_drop(player, wave):
+    # Dod spēlētājam izlases spēka uzpūšanu, kad tas nogalina bosu
+    # [SAREŽĢĪTA LOĢIKA]: Izlases buff izvēle no vairākām iespējām
+    drop_type = random.choice(["damage", "speed", "health", "armor", "lifesteal"])
+    
+    if drop_type == "damage":
+        bonus = int(2 + (wave * 0.5))
+        player.damage += bonus
+        trigger_boss_drop_anim(f"⭐ DAMAGE BOOST! +{bonus} ⭐")
+    elif drop_type == "speed":
+        bonus = round(1.5 + (wave * 0.2), 1)
+        player.speed += bonus
+        trigger_boss_drop_anim(f"⭐ SPEED BOOST! +{bonus} ⭐")
+    elif drop_type == "health":
+        health_boost = int(50 + (wave * 10))
+        player.max_health += health_boost
+        player.health += health_boost
+        trigger_boss_drop_anim(f"⭐ HEALTH BOOST! +{health_boost} ⭐")
+    elif drop_type == "armor":
+        armor_boost = 2 + (wave // 2)
+        player.armor = getattr(player, 'armor', 0) + armor_boost
+        trigger_boss_drop_anim(f"⭐ ARMOR BOOST! +{armor_boost} ⭐")
+    elif drop_type == "lifesteal":
+        bonus = round(wave * 0.5, 1)
+        player.lifesteal = getattr(player, 'lifesteal', 0) + bonus
+        trigger_boss_drop_anim(f"⭐ LIFESTEAL BOOST! +{bonus} ⭐")
 
 
 # PASTĀVĪGAIS TUMSAS (SHROUD) SLĀNIS
@@ -194,6 +224,12 @@ def trigger_save_anim(msg):
     save_notification_timer = 90
     save_notification_msg = msg
 
+# funkcija trigger_boss_drop_anim pieņem str tipa vērtību msg un atgriež None tipa vērtību None
+def trigger_boss_drop_anim(msg):
+    global boss_drop_timer, boss_drop_msg
+    boss_drop_timer = 180
+    boss_drop_msg = msg
+
 # funkcija save_game_csv pieņem str tipa vērtību name, str tipa vērtību char_type, Player tipa vērtību p, SkillTree tipa vērtību s_tree un str tipa vērtību password un atgriež None tipa vērtību None
 def save_game_csv(name, char_type, p, s_tree, password=""):
     # [SAREŽĢĪTA LOĢIKA]: CSV datu atjaunināšana
@@ -220,6 +256,12 @@ def save_game_csv(name, char_type, p, s_tree, password=""):
         "sp": getattr(p, 'skill_points', 0),
         "magnet": getattr(p, 'magnet_range', 60),
         "dash": int(getattr(p, 'dash_unlocked', False)),
+        "armor": getattr(p, 'armor', 0),
+        "lifesteal": getattr(p, 'lifesteal', 0),
+        "crit_chance": getattr(p, 'crit_chance', 0),
+        "thorns": getattr(p, 'thorns', 0),
+        "regen": getattr(p, 'regen', 0.0),
+        "gold_modifier": getattr(p, 'gold_modifier', 1.0),
         "highscore": getattr(p, 'highscore', 1)
     }
 
@@ -270,6 +312,12 @@ def load_game_csv(name, char_type, p, s_tree):
                     p.skill_points = s_i("sp", 0)
                     p.magnet_range = s_i("magnet", 60)
                     p.dash_unlocked = bool(s_i("dash", 0))
+                    p.armor = s_f("armor", 0)
+                    p.lifesteal = s_f("lifesteal", 0)
+                    p.crit_chance = s_i("crit_chance", 0)
+                    p.thorns = s_i("thorns", 0)
+                    p.regen = s_f("regen", 0.0)
+                    p.gold_modifier = s_f("gold_modifier", 1.0)
                     p.energy = p.max_energy
                     p.highscore = s_i("highscore", 1)
 
@@ -738,6 +786,7 @@ while True:
                     player.health -= max(0.1, 0.8 - (getattr(player, 'armor', 0) * 0.05))
             b.draw(screen)
             if b.health <= 0:
+                apply_boss_drop(player, current_wave)
                 bosses.remove(b); player.money += 50; player.skill_points += 1; trigger_save_anim("+1 SP!")
 
         if boss_energy >= boss_goal:
@@ -795,10 +844,55 @@ while True:
         pygame.draw.rect(screen, (60, 0, 0), (bar_x, bar_y + 15, 200, 15))
         pygame.draw.rect(screen, (0, 255, 120), (bar_x, bar_y + 15, max(0, (player.health / player.max_health) * 200), 15))
 
+        # --- STATS PANEL (Right side) ---
+        stats_font = pygame.font.SysFont("Consolas", 16)
+        stats_x = screen_w - 220
+        stats_y = 20
+        stats_bg = pygame.Surface((200, 160), pygame.SRCALPHA)
+        stats_bg.fill((20, 20, 40, 200))
+        pygame.draw.rect(stats_bg, (0, 150, 200), (0, 0, 200, 160), 2)
+        screen.blit(stats_bg, (stats_x, stats_y))
+        
+        stats_list = [
+            f"DMG: {int(player.damage)}",
+            f"SPD: {player.speed:.1f}",
+            f"RNG: {int(player.attack_radius)}",
+            f"ARM: {getattr(player, 'armor', 0):.1f}",
+            f"LIFE: {getattr(player, 'lifesteal', 0):.1f}",
+            f"CRIT: {getattr(player, 'crit_chance', 0)}%",
+            f"MAG: {int(player.magnet_range)}"
+        ]
+        
+        for i, stat in enumerate(stats_list):
+            stat_text = stats_font.render(stat, True, (100, 255, 200))
+            screen.blit(stat_text, (stats_x + 10, stats_y + 10 + i * 20))
+
         if save_notification_timer > 0:
             t = pygame.font.SysFont("Arial", 28, bold=True).render(save_notification_msg, True, (0, 255, 150))
             screen.blit(t, t.get_rect(center=(screen_w // 2, 100)))
             save_notification_timer -= 1
+
+        if boss_drop_timer > 0:
+            # Big glowing boss drop notification
+            alpha = int(255 * (boss_drop_timer / 180))
+            big_font = pygame.font.SysFont("Arial", 52, bold=True)
+            drop_text = big_font.render(boss_drop_msg, True, (255, 215, 0))
+            
+            # Add background box for visibility
+            pad = 20
+            box_rect = pygame.Rect(screen_w // 2 - drop_text.get_width() // 2 - pad, 
+                                   screen_h // 2 - 80 - pad,
+                                   drop_text.get_width() + pad * 2,
+                                   drop_text.get_height() + pad * 2)
+            # Semi-transparent gold/red glow background
+            box_surf = pygame.Surface((box_rect.width, box_rect.height), pygame.SRCALPHA)
+            box_surf.fill((139, 35, 35, 180))
+            pygame.draw.rect(box_surf, (255, 215, 0), (0, 0, box_rect.width, box_rect.height), 3)
+            screen.blit(box_surf, box_rect.topleft)
+            
+            # Draw the text centered in the box
+            screen.blit(drop_text, drop_text.get_rect(center=box_rect.center))
+            boss_drop_timer -= 1
 
     elif game_state == "paused":
         # Pūš semi-transparent overlay pār spēles ekrānu
