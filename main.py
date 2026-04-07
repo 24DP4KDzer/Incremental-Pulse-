@@ -89,24 +89,24 @@ def apply_boss_drop(player, wave):
     if drop_type == "damage":
         bonus = int(2 + (wave * 0.5))
         player.damage += bonus
-        trigger_boss_drop_anim(f"⭐ DAMAGE BOOST! +{bonus} ⭐")
+        trigger_boss_drop_anim(f"DAMAGE BOOST! +{bonus}")
     elif drop_type == "speed":
         bonus = round(1.5 + (wave * 0.2), 1)
         player.speed += bonus
-        trigger_boss_drop_anim(f"⭐ SPEED BOOST! +{bonus} ⭐")
+        trigger_boss_drop_anim(f"SPEED BOOST! +{bonus}")
     elif drop_type == "health":
         health_boost = int(50 + (wave * 10))
         player.max_health += health_boost
         player.health += health_boost
-        trigger_boss_drop_anim(f"⭐ HEALTH BOOST! +{health_boost} ⭐")
+        trigger_boss_drop_anim(f"HEALTH BOOST! +{health_boost}")
     elif drop_type == "armor":
         armor_boost = 2 + (wave // 2)
         player.armor = getattr(player, 'armor', 0) + armor_boost
-        trigger_boss_drop_anim(f"⭐ ARMOR BOOST! +{armor_boost} ⭐")
+        trigger_boss_drop_anim(f"ARMOR BOOST! +{armor_boost}")
     elif drop_type == "lifesteal":
         bonus = round(wave * 0.5, 1)
         player.lifesteal = getattr(player, 'lifesteal', 0) + bonus
-        trigger_boss_drop_anim(f"⭐ LIFESTEAL BOOST! +{bonus} ⭐")
+        trigger_boss_drop_anim(f"LIFESTEAL BOOST! +{bonus}")
 
 
 # PASTĀVĪGAIS TUMSAS (SHROUD) SLĀNIS
