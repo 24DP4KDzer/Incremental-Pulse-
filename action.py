@@ -48,3 +48,22 @@ class HpCoin(Coin):
     # funkcija respawn pieņem HpCoin tipa vērtību self, int tipa vērtību screen_w un int tipa vērtību screen_h un atgriež None tipa vērtību None
     def respawn(self, screen_w, screen_h):
         self.rect.center = (random.randint(50, screen_w-50), random.randint(50, screen_h-50))
+
+
+class Chest:
+    # funkcija __init__ pieņem Chest tipa vērtību self, int tipa vērtību x un int tipa vērtību y un atgriež None tipa vērtību None
+    def __init__(self, x, y):
+        try:
+            #Bilde prieks laades (chest)
+            self.image = pygame.image.load("photos/chest.png").convert_alpha()
+            #Maina izmeru
+            self.image = pygame.transform.scale(self.image, (90, 90))
+        except:
+            #rezerve ja nav bilde
+            self.image = pygame.Surface((40, 40))
+            self.image.fill((255, 215, 0))
+        self.rect = self.image.get_rect(topleft=(x, y))
+
+    # funkcija draw pieņem Chest tipa vērtību self un pygame.Surface tipa vērtību surface un atgriež None tipa vērtību None
+    def draw(self, surface):
+        surface.blit(self.image, self.rect)

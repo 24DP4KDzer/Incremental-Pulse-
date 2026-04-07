@@ -1,9 +1,6 @@
 name,char_type,money,max_health,radius,speed,damage,multi,aspeed,max_energy,sp,magnet,dash,highscore,skill_stamina,skill_damage,skill_lifesteal,skill_range,skill_knockback,skill_multi,skill_crit,skill_health,skill_armor,skill_regen,skill_thorns,skill_magnet,skill_greed,skill_speed,skill_dash,skill_dash_cd
-yes,wizard,17,80,250,5,2.5,1,25,25.0,5,60,0,7,3,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+yes,wizard,127,80.0,250.0,5.0,4.0,1,25,40.0,6,60,0,7,3,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 karlis,dwarf,4,150,120,3,2,1,25,10.0,0,60,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-nigger,shadow,302,750.0845963952,50,17.1,14.5,4,25,145.0,8,195,1,14,6,6,0,6,2,3,0,8,4,0,5,2,4,5,1,5
-niggers!,shadow,179,60,150,8,1.0,1,25,10.0,1,60,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-nigger,wizard,454,4374.493366176807,50,23.1,23.5,4,25,235.0,9,285,1,14,6,6,0,6,2,3,0,8,4,0,5,2,4,5,1,5
 kizha,shadow,47,60,150,8,1.0,1,25,10.0,0,60,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 kiiizha,wizard,90,80,250,5,1.0,1,25,10.0,1,60,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 kirils,shadow,104,60,150,8,1.0,1,25,10.0,1,60,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0

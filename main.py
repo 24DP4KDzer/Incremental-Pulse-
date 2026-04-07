@@ -6,7 +6,7 @@ import os
 import math
 from player import Player
 from enemy import Enemy
-from action import Coin, SpecialCoin, HpCoin
+from action import Coin, SpecialCoin, HpCoin, Chest
 from projectile import Projectile
 from skill_tree import SkillTree
 from boss import Boss
@@ -228,29 +228,29 @@ def load_game_csv(name, char_type, p, s_tree):
 
                     s_tree.sync_with_player(p)
 
+# funkcija get_leaderboard pieņem int tipa vērtību limit un atgriež sarakstu ar augstākajiem rezultātiem
+def get_leaderboard(limit=5):
+    entries = []
+    if os.path.exists(PLAYER_FILE):
+        try:
+            with open(PLAYER_FILE, 'r', newline='') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    try:
+                        score = int(row.get("highscore", "0") or 0)
+                    except ValueError:
+                        score = 0
+                    entries.append((row.get("name", ""), row.get("char_type", ""), score))
+        except:
+            return []
+    entries.sort(key=lambda e: e[2], reverse=True)
+    return entries[:limit]
+
 # funkcija get_dist_to_rect pieņem tuple tipa vērtību point un pygame.Rect tipa vērtību rect un atgriež float tipa vērtību distance
 def get_dist_to_rect(point, rect):
     px = max(rect.left, min(point[0], rect.right))
     py = max(rect.top, min(point[1], rect.bottom))
     return math.hypot(point[0] - px, point[1] - py)
-
-class Chest:
-    # funkcija __init__ pieņem Chest tipa vērtību self, int tipa vērtību x un int tipa vērtību y un atgriež None tipa vērtību None
-    def __init__(self, x, y):
-        try:
-            #Bilde prieks laades (chest)
-            self.image = pygame.image.load("photos/chest.png").convert_alpha()
-            #Maina izmeru
-            self.image = pygame.transform.scale(self.image, (90, 90))
-        except:
-            #rezerve ja nav bilde
-            self.image = pygame.Surface((40, 40))
-            self.image.fill((255, 215, 0))
-        self.rect = self.image.get_rect(topleft=(x, y))
-
-    # funkcija draw pieņem Chest tipa vērtību self un pygame.Surface tipa vērtību surface un atgriež None tipa vērtību None
-    def draw(self, surface):
-        surface.blit(self.image, self.rect)
 
 game_state, user_name = "menu", ""
 player = Player()
@@ -387,6 +387,29 @@ while True:
         hint = pygame.font.SysFont("Arial", 20).render("Input the user and press ENTER", True, (150, 150, 150))
         screen.blit(hint, hint.get_rect(center=(screen_w // 2, screen_h // 2 + 110)))
 
+        leaderboard = get_leaderboard(6)
+        lb_x = screen_w - 420
+        lb_y = screen_h // 4 - 40
+        lb_w, lb_h = 400, 370
+        lb_rect = pygame.Rect(lb_x, lb_y, lb_w, lb_h)
+        pygame.draw.rect(screen, (15, 15, 30), lb_rect, border_radius=12)
+        pygame.draw.rect(screen, (0, 255, 150), lb_rect, 2, border_radius=12)
+
+        title_font = pygame.font.SysFont("Impact", 28)
+        entry_font = pygame.font.SysFont("Arial", 20)
+        screen.blit(title_font.render("LEADERBOARD", True, (255, 255, 255)), (lb_x + 20, lb_y + 18))
+
+        if leaderboard:
+            for idx, (name, char_type, score) in enumerate(leaderboard):
+                rank_text = f"{idx + 1}. {name or '---'} ({char_type or 'N/A'})"
+                score_text = f"{score}"
+                entry_surface = entry_font.render(rank_text, True, (200, 200, 255))
+                score_surface = entry_font.render(score_text, True, (0, 255, 150))
+                screen.blit(entry_surface, (lb_x + 20, lb_y + 60 + idx * 45))
+                screen.blit(score_surface, (lb_x + lb_w - 70, lb_y + 60 + idx * 45))
+        else:
+            screen.blit(entry_font.render("No leaderboard data yet", True, (150, 150, 150)), (lb_x + 20, lb_y + 60))
+
     # --- VAROŅA IZVĒLE ---
     elif game_state == "char_select":
         if char_select_bg:
@@ -441,7 +464,7 @@ while True:
             for _ in range(max_enemies): spawn_enemy(hp_scale, spd_scale, current_wave)
             if current_wave % 2 == 0:
                 chests.append(Chest(random.randint(100, screen_w-100), random.randint(100, screen_h-100)))
-            trigger_save_anim(f"WAVE {current_wave}: EVOLUTION")
+            trigger_save_anim(f"WAVE: {current_wave}")
 
         player.move(pygame.key.get_pressed())
         player.rect.clamp_ip(screen.get_rect())
@@ -494,7 +517,7 @@ while True:
                 if effect == "energy": player.energy = player.max_energy; trigger_save_anim("MAX ENERGY!")
                 elif effect == "freeze": time_freeze_timer = 300; trigger_save_anim("FREEZE TIME!")
                 elif effect == "nuke":
-                    nuke_flash_timer = 15; trigger_save_anim("EKRĀNA ATTĪRĪŠANA!")
+                    nuke_flash_timer = 15; trigger_save_anim("NUKE!")
                     # 1. Iznīcināt visus parastos ienaidniekus
                     for e in enemies[:]: 
                         e.health = 0
@@ -621,6 +644,11 @@ while True:
         pygame.draw.rect(screen, (0, 150, 255), (bar_x, bar_y, max(0, (player.energy / player.max_energy) * 200), 10))
         pygame.draw.rect(screen, (60, 0, 0), (bar_x, bar_y + 15, 200, 15))
         pygame.draw.rect(screen, (0, 255, 120), (bar_x, bar_y + 15, max(0, (player.health / player.max_health) * 200), 15))
+
+        if save_notification_timer > 0:
+            t = pygame.font.SysFont("Arial", 28, bold=True).render(save_notification_msg, True, (0, 255, 150))
+            screen.blit(t, t.get_rect(center=(screen_w // 2, 100)))
+            save_notification_timer -= 1
 
     elif game_state == "dead":
         screen.fill((5, 5, 15))

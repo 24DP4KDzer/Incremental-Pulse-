@@ -4,6 +4,7 @@ import random
 
 # --- BOSA UGUNSBUMBAS KLASE ---
 class BossFireball:
+    # funkcija __init__ pieņem int tipa vērtību x, int tipa vērtību y, int tipa vērtību target_x, int tipa vērtību target_y un atgriež None tipa vērtību None
     def __init__(self, x, y, target_x, target_y):
         self.pos = pygame.math.Vector2(x, y)
         direction = pygame.math.Vector2(target_x - x, target_y - y)
@@ -16,10 +17,12 @@ class BossFireball:
         self.radius = 12
         self.rect = pygame.Rect(x - self.radius, y - self.radius, self.radius * 2, self.radius * 2)
         
+    # funkcija update pieņem float tipa vērtību dilation un atgriež None tipa vērtību None
     def update(self, dilation):
         self.pos += self.vel * dilation
         self.rect.center = (int(self.pos.x), int(self.pos.y))
         
+    # funkcija draw pieņem pygame.Surface tipa vērtību screen un atgriež None tipa vērtību None
     def draw(self, screen):
         # Uzzīmē mirdzošu ugunsbumbu (Sarkana ar dzeltenu vidu)
         pygame.draw.circle(screen, (255, 50, 0), self.rect.center, self.radius)
@@ -27,6 +30,7 @@ class BossFireball:
 
 
 class Boss:
+    # funkcija __init__ pieņem int tipa vērtību screen_w, int tipa vērtību screen_h, int tipa vērtību wave un atgriež None tipa vērtību None
     def __init__(self, screen_w, screen_h, wave=1):
         side = random.choice(["top", "bottom", "left", "right"])
         if side == "top": x, y = random.randint(0, screen_w), -100
@@ -56,7 +60,9 @@ class Boss:
             self.image = pygame.Surface((100, 100), pygame.SRCALPHA)
             pygame.draw.rect(self.image, (200, 0, 0), (0, 0, 100, 100))
 
+    # funkcija update pieņem pygame.Rect tipa vērtību player_rect, float tipa vērtību dilation un atgriež int tipa vērtību damage_dealt_to_player
     def update(self, player_rect, dilation):
+        # Aprēķina attāluma vektoru no bosa uz spēlētāju (horizontāli un vertikāli)
         dx = player_rect.centerx - self.rect.centerx
         dy = player_rect.centery - self.rect.centery
         dist = math.hypot(dx, dy)
@@ -99,9 +105,10 @@ class Boss:
         # Mēs atgriežam bojājumu skaitu, lai main.py varētu atņemt spēlētāja dzīvību
         return damage_dealt_to_player
 
+    # funkcija draw pieņem pygame.Surface tipa vērtību screen un atgriež None tipa vērtību None
     def draw(self, screen):
         # 1. Vispirms uzzīmē visas ugunsbumbas (lai tās lidotu pirms/aiz bosa)
-        for fb in self.fireballs:
+        for fireball in self.fireballs:
             fb.draw(screen)
             
         # 2. Uzzīmē pašu bosu
