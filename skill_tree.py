@@ -80,7 +80,7 @@ class SkillTree:
             elif skill_node["id"] == "regen": player.regen = getattr(player, 'regen', 0) + (0.01 * lvl)
             elif skill_node["id"] == "range": player.attack_radius = min(250, player.attack_radius + (15 * lvl))
             elif skill_node["id"] == "multi": player.projectile_count = min(5, 1 + lvl)
-            elif skill_node["id"] == "speed": player.speed += (0.4 * lvl) # Izlabots ātruma limits
+            elif skill_node["id"] == "speed": player.speed = min(22, player.speed + (0.4 * lvl))
             elif skill_node["id"] == "damage": player.damage += 0.5 * lvl
             elif skill_node["id"] == "magnet": player.magnet_range = min(300, player.magnet_range + (15 * lvl))
             elif skill_node["id"] == "dash": player.dash_unlocked = True
@@ -127,7 +127,9 @@ class SkillTree:
                 elif skill_node["id"] == "damage":
                     player.damage += 0.5
                 elif skill_node["id"] == "speed":
-                    player.speed += 0.3 # Izlabots ātruma limits
+                    if player.speed >= 22:
+                        return None
+                    player.speed = min(22, player.speed + 0.4)
                 elif skill_node["id"] == "magnet":
                     player.magnet_range = min(300, player.magnet_range + 15)
                 elif skill_node["id"] == "dash":

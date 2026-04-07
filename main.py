@@ -123,9 +123,20 @@ def apply_boss_drop(player, wave):
         player.damage += bonus
         trigger_boss_drop_anim(f"DAMAGE BOOST! +{bonus}")
     elif drop_type == "speed":
-        bonus = round(0.2 + (wave * 0.2), 1)
-        player.speed += bonus
-        trigger_boss_drop_anim(f"SPEED BOOST! +{bonus}")
+        if player.speed >= 22:
+            return None
+        else:
+            bonus = round(0.2 + (wave * 0.2), 1)
+            
+            # Pieskaitām bonusu, bet neļaujam tam pārsniegt 22
+            old_speed = player.speed
+            player.speed = min(22, player.speed + bonus)
+            
+            # Aprēķinām, cik reāli tika pieskaitīts (vizuālam efektam)
+            actual_gain = round(player.speed - old_speed, 1)
+            
+            if actual_gain > 0:
+                trigger_boss_drop_anim(f"SPEED BOOST! +{actual_gain}")
     elif drop_type == "health":
         health_boost = int(5 + (wave * 0.05))
         player.max_health += health_boost
@@ -197,6 +208,8 @@ login_img = pygame.transform.scale(original_login_img, (350, 80))
 
 char_card_img = pygame.image.load(get_path("photos/char_select.png")).convert_alpha()
 char_card_img = pygame.transform.scale(char_card_img, (280, 400))
+
+
 
 # Varoņu sprites
 wizard_ui = load_sprite(get_path("photos/wizard_right.png"))
