@@ -188,7 +188,10 @@ original_login_img = pygame.image.load(get_path("photos/login.png")).convert_alp
 login_img = pygame.transform.scale(original_login_img, (350, 80))
 
 
-# Varoņu spreiti
+char_card_img = pygame.image.load(get_path("photos/char_select.png")).convert_alpha()
+char_card_img = pygame.transform.scale(char_card_img, (280, 400))
+
+# Varoņu sprites
 wizard_ui = load_sprite(get_path("photos/wizard_right.png"))
 shadow_ui = load_sprite(get_path("photos/Shadow_up.png"))
 dwarf_ui  = load_sprite(get_path("photos/dwarf_forward.png"))
@@ -323,7 +326,7 @@ def render_transition(surface):
     if transition_timer <= 0:
         transition_active = False
 
-# funkcija save_game_csv pieņem str tipa vērtību name, str tipa vērtību char_type, Player tipa vērtību p, SkillTree tipa vērtību s_tree un str tipa vērtību password un atgriež None tipa vērtību None
+
 # funkcija save_game_csv pieņem str tipa vērtību name, str tipa vērtību char_type, Player tipa vērtību p, SkillTree tipa vērtību s_tree un str tipa vērtību password un atgriež None tipa vērtību None
 def save_game_csv(name, char_type, p, s_tree, password=""):
     # [SAREŽĢĪTA LOĢIKA]: CSV datu atjaunināšana
@@ -697,6 +700,7 @@ while True:
         else:
             screen.fill((10, 10, 20))
 
+        # Tumšais pārklājums fonam
         overlay = pygame.Surface((screen_w, screen_h), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 100))
         screen.blit(overlay, (0, 0))
@@ -704,15 +708,35 @@ while True:
         title = render_pixel_text("CHOOSE YOUR CHARACTER", 44, (255, 255, 255), bold=True)
         screen.blit(title, (screen_w // 2 - title.get_width() // 2, 80))
 
-        classes = [("WIZARD", (0, 200, 255), wizard_ui), ("SHADOW", (150, 0, 255), shadow_ui), ("DWARF", (255, 150, 0), dwarf_ui)]
+        # Definējam klases (img šeit ir tēla sprites, nevis rāmis)
+        classes = [("WIZARD", (0, 200, 255), wizard_ui), 
+                   ("SHADOW", (150, 0, 255), shadow_ui), 
+                   ("DWARF", (255, 150, 0), dwarf_ui)]
+
         for i, (name, col, img) in enumerate(classes):      
+            # Kartītes novietojums
             rect = pygame.Rect(screen_w // 2 - 450 + (i * 310), 200, 280, 400)
             is_hovered = rect.collidepoint(m_pos)
-            border_col = (255, 255, 255) if is_hovered else col
-            pygame.draw.rect(screen, (20, 20, 30), rect, border_radius=15)
-            pygame.draw.rect(screen, border_col, rect, 3 if is_hovered else 2, border_radius=15)
-            screen.blit(img, img.get_rect(center=(rect.centerx, rect.centery - 20)))
-            name_t = render_pixel_text(name, 24, border_col, bold=True)
+            
+            # 1. Zīmējam "char_select.png" kā kartītes fonu
+            if char_card_img:
+                screen.blit(char_card_img, rect.topleft)
+            else:
+                # Rezerves variants, ja bilde pazūd
+                pygame.draw.rect(screen, (20, 20, 30), rect, border_radius=15)
+
+            # 2. Zīmējam izgaismojumu (hover), ja pele ir virsū
+
+
+            # 3. Zīmējam pašu tēlu (virsū fonam)
+            # Ja is_hovered, tēls nedaudz "peld" uz augšu
+            offset_y = -10 if is_hovered else 0
+            char_rect = img.get_rect(center=(rect.centerx, rect.centery - 20 + offset_y))
+            screen.blit(img, char_rect)
+
+            # 4. Tēla vārds
+            name_col = (255, 255, 255) if is_hovered else col
+            name_t = render_pixel_text(name, 24, name_col, bold=True)
             screen.blit(name_t, name_t.get_rect(center=(rect.centerx, rect.bottom - 45)))
 
     # --- SPĒLĒŠANA ---
