@@ -172,7 +172,7 @@ def load_logo(path, max_w, max_h):
     except:
         return None
 
-# --- IELĀDĒT VISUS AKTĪVUS ---
+# --- IELĀDĒT VISU ---
 menu_bg        = load_bg(get_path("photos/menu_bg.png"))
 char_select_bg = load_bg(get_path("photos/char_select_bg.png"))
 game_bg        = load_bg(get_path("photos/bg.png"))
@@ -183,6 +183,9 @@ menu_logo = load_logo(get_path("photos/logo.png"), screen_w * 0.6, screen_h * 0.
 play_img = load_sprite(get_path("photos/play_button.png"), size=(300, 80))
 settings_img = load_sprite(get_path("photos/settings_button.png"), size=(300, 80))
 back_img = load_sprite(get_path("photos/back_button.png"), size=(150, 50))
+
+original_login_img = pygame.image.load(get_path("photos/login.png")).convert_alpha()
+login_img = pygame.transform.scale(original_login_img, (350, 80))
 
 
 # Varoņu spreiti
@@ -663,7 +666,7 @@ while True:
 
     # --- MENU + LOGIN/REGISTER (MERGED) ---
     elif game_state == "menu":
-        user_input_rect, pass_input_rect, user_clear_btn, pass_clear_btn = draw_login_screen(screen, screen_w, screen_h, menu_bg, user_name, user_password, input_field_active, password_error_msg, password_error_timer, menu_logo)
+        user_input_rect, pass_input_rect, user_clear_btn, pass_clear_btn = draw_login_screen(screen, screen_w, screen_h, menu_bg, user_name, user_password, input_field_active, password_error_msg, password_error_timer, menu_logo, login_img)
         
         # Leaderboard
         leaderboard = get_leaderboard(6)
