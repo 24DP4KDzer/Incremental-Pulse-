@@ -1,5 +1,4 @@
 name,password,char_type,money,max_health,radius,speed,damage,multi,aspeed,max_energy,sp,magnet,dash,armor,lifesteal,crit_chance,thorns,regen,gold_modifier,highscore,skill_stamina,skill_damage,skill_lifesteal,skill_range,skill_knockback,skill_multi,skill_crit,skill_health,skill_armor,skill_regen,skill_thorns,skill_magnet,skill_greed,skill_speed,skill_dash,skill_dash_cd
-kaapers,1234,wizard,366,80.0,250.0,5.0,1.0,1,25,20.0,4,60,0,,,,,,,5,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-kaapers,1234,shadow,189,200.0,150.0,8.0,7.0,1,25,320.0,5,60,0,0.0,0.0,0,0,0.0,1.0,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-kaapesr,,none,0,100,100,1.3,1.0,1,25,10.0,0,60,0,0,0,0,0,0.0,1.0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-kaapers,1234,dwarf,27,150,120,3,2,1,25,10.0,0,60,0,0,0,0,0,0.0,1.0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+test,test,wizard,47723,1669440.0,250,1182.4,2656.0,4,5,625.0,1507,300,1,10,5,50,5,0.05,1.0,73,15,10,5,10,5,3,10,10,10,5,5,10,5,10,1,5
+test,test,shadow,4,1920.0,250,28.0,26.0,4,25,385.0,0,300,1,10,5,50,5,0.05,1.0,1,15,10,5,10,5,3,10,10,10,5,5,10,5,10,1,5
+user,user,wizard,12,80.0,250.0,5.0,1.0,1,25,10.0,0,60,0,0,0,0,0,0.0,1.0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
