@@ -130,9 +130,14 @@ def draw_settings_overlay(screen, screen_w, screen_h, master_volume, music_volum
     
     # Back Button
     back_btn = pygame.Rect(screen_w // 2 - 75, screen_h - 150, 150, 50)
-    pygame.draw.rect(screen, (50, 150, 255), back_btn, border_radius=10)
-    pygame.draw.rect(screen, (0, 255, 150), back_btn, 2, border_radius=10)
-    back_text = render_pixel_text("BACK", UI_MEDIUM, (0, 0, 0), bold=True)
-    screen.blit(back_text, back_text.get_rect(center=back_btn.center))
+    
+    if back_img:
+        # Zīmējam attēlu pogas vietā
+        screen.blit(back_img, back_btn.topleft)
+    else:
+        # Rezerves variants, ja attēls nav ielādēts
+        pygame.draw.rect(screen, (50, 150, 255), back_btn, border_radius=10)
+        back_text = render_pixel_text("BACK", UI_MEDIUM, (0, 0, 0), bold=True)
+        screen.blit(back_text, back_text.get_rect(center=back_btn.center))
     
     return back_btn
