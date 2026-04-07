@@ -242,6 +242,9 @@ def save_game_csv(name, char_type, p, s_tree, password=""):
                 p_rows = list(csv.DictReader(f))
         except: p_rows = []
 
+    # Atiestatīt spēlētāja stats, lai noņemtu bosu dropu bonusus pirms saglabāšanas
+    s_tree.sync_with_player(p)
+    
     if globals().get('current_wave', 1) > getattr(p, 'highscore', 1):
         p.highscore = globals().get('current_wave', 1)
 
@@ -938,7 +941,10 @@ while True:
         msg = pygame.font.SysFont("Impact", 100).render("GAME OVER", True, (255, 0, 0))
         screen.blit(msg, msg.get_rect(center=(screen_w // 2, screen_h // 2)))
         death_timer -= 1
-        if death_timer <= 0: game_state = "skill_tree"
+        if death_timer <= 0:
+            # Atiestatīt spēlētāja stats, lai noņemtu visus bosu dropu bonusus
+            skills.sync_with_player(player)
+            game_state = "skill_tree"
 
     elif game_state == "skill_tree":
         skills.draw(screen, player.money, player.skill_points, player.char_type)
