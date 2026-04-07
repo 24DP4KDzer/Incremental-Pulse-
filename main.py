@@ -440,7 +440,7 @@ def get_dist_to_rect(point, rect):
     py = max(rect.top, min(point[1], rect.bottom))
     return math.hypot(point[0] - px, point[1] - py)
 
-game_state, user_name = "menu", ""
+
 player = Player()
 skills = SkillTree(screen_w, screen_h)
 bosses, enemies, projectiles, coins, chests, active_swings, special_coins, hp_drops = [], [], [], [], [], [], [], []
