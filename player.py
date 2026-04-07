@@ -160,27 +160,37 @@ class Player:
 
     # funkcija move pieņem list tipa vērtību keys un atgriež None tipa vērtību None
     def move(self, keys):
+        dx, dy = 0, 0
         is_moving = False
         
         # Pārbaudīt Uz Augšu un Uz Leju
         if keys[pygame.K_w]: 
-            self.rect.y -= self.speed
+            dy -= 1
             self.direction = "up"
             is_moving = True
         if keys[pygame.K_s]:
-            self.rect.y += self.speed
+            dy += 1
             self.direction = "down"
             is_moving = True
             
         # Pārbaudīt Pa Kreisi un Pa Labi (Izmantojot 'if' nevis 'elif'!)
         if keys[pygame.K_a]:
-            self.rect.x -= self.speed
+            dx -= 1
             self.direction = "left"
             is_moving = True
         if keys[pygame.K_d]:
-            self.rect.x += self.speed
+            dx += 1
             self.direction = "right"
             is_moving = True
+
+        # Normalizēt diagonālo kustību, lai tas nebūtu ātrāks
+        if dx != 0 and dy != 0:
+            dx *= 0.707  # 1/√2 ≈ 0.707
+            dy *= 0.707
+
+        # Pielietot ātrumu un pārvietojumu
+        self.rect.x += dx * self.speed
+        self.rect.y += dy * self.speed
 
         # Apstrādāt animācijas loģiku
         if is_moving:
