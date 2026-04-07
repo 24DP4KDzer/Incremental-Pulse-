@@ -571,12 +571,6 @@ while True:
                     input_field_active = "username"
                 elif pass_input_rect.collidepoint(event.pos):
                     input_field_active = "password"
-                elif user_clear_btn.collidepoint(event.pos):
-                    user_name = ""
-                    input_field_active = "username"
-                elif pass_clear_btn.collidepoint(event.pos):
-                    user_password = ""
-                    input_field_active = "password"
             elif game_state == "paused":
                 if pause_save_btn.collidepoint(event.pos):
                     save_game_csv(user_name, player.char_type, player, skills, user_password)
@@ -618,13 +612,13 @@ while True:
                     save_game_csv(user_name, player.char_type, player, skills, user_password)
                     trigger_save_anim("UZLABOTS!")
 
-    # --- SETTINGS OVERLAY ---
+    # --- MAIN MENU ---
+    if game_state == "main_menu":
+        play_btn, settings_btn = draw_main_menu(screen, screen_w, screen_h, menu_bg, menu_logo)
+    
+    # --- SETTINGS OVERLAY (drawn on top of current screen) ---
     if show_settings and game_state != "playing":
         back_btn = draw_settings_overlay(screen, screen_w, screen_h, master_volume, music_volume, sfx_volume)
-
-    # --- MAIN MENU ---
-    elif game_state == "main_menu":
-        play_btn, settings_btn = draw_main_menu(screen, screen_w, screen_h, menu_bg, menu_logo)
 
     # --- MENU + LOGIN/REGISTER (MERGED) ---
     elif game_state == "menu":

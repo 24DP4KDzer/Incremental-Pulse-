@@ -58,36 +58,39 @@ def draw_login_screen(screen, screen_w, screen_h, menu_bg, user_name, user_passw
     # --- USERNAME INPUT ---
     box_w, box_h = 350, 50
     user_box_rect = pygame.Rect(screen_w // 2 - box_w // 2, screen_h // 2 + 20, box_w, box_h)
+    user_input_rect = user_box_rect.copy()
     
     # Highlight if focused
     border_col = (255, 255, 0) if input_field_active == "username" else (0, 255, 150)
     pygame.draw.rect(screen, (20, 20, 35), user_box_rect, border_radius=10)
     pygame.draw.rect(screen, border_col, user_box_rect, 2, border_radius=10)
-    u_txt = render_pixel_text(f"User: {user_name}|" if input_field_active == "username" else f"User: {user_name}", 18, (255, 255, 255))
-    screen.blit(u_txt, u_txt.get_rect(center=user_box_rect.center))
     
-    # Clear button for username
-    user_clear_btn = pygame.Rect(user_box_rect.right + 10, user_box_rect.y, 40, 40)
-    pygame.draw.rect(screen, (255, 100, 100), user_clear_btn, border_radius=5)
-    clear_x = render_pixel_text("X", 16, (0, 0, 0), bold=True)
-    screen.blit(clear_x, clear_x.get_rect(center=user_clear_btn.center))
+    # Render username text (no placeholder, shown text is gray if empty)
+    if user_name:
+        u_txt = render_pixel_text(f"User: {user_name}|" if input_field_active == "username" else f"User: {user_name}", 18, (255, 255, 255))
+    else:
+        # Gray placeholder when empty
+        u_txt = render_pixel_text("User: ", 18, (100, 100, 100))
+    screen.blit(u_txt, u_txt.get_rect(center=user_box_rect.center))
     
     # --- PASSWORD INPUT ---
     pass_box_rect = pygame.Rect(screen_w // 2 - box_w // 2, screen_h // 2 + 90, box_w, box_h)
+    pass_input_rect = pass_box_rect.copy()
     
     border_col = (255, 255, 0) if input_field_active == "password" else (0, 255, 150)
     pygame.draw.rect(screen, (20, 20, 35), pass_box_rect, border_radius=10)
     pygame.draw.rect(screen, border_col, pass_box_rect, 2, border_radius=10)
-    pass_display = "*" * len(user_password) if user_password else ""
-    p_txt = render_pixel_text(f"Pass: {pass_display}|" if input_field_active == "password" else f"Pass: {pass_display}", 18, (255, 255, 255))
+    
+    # Render password text (no placeholder, shown as dots)
+    if user_password:
+        pass_display = "*" * len(user_password)
+        p_txt = render_pixel_text(f"Pass: {pass_display}|" if input_field_active == "password" else f"Pass: {pass_display}", 18, (255, 255, 255))
+    else:
+        # Gray placeholder when empty
+        p_txt = render_pixel_text("Pass: ", 18, (100, 100, 100))
     screen.blit(p_txt, p_txt.get_rect(center=pass_box_rect.center))
     
-    # Clear button for password
-    pass_clear_btn = pygame.Rect(pass_box_rect.right + 10, pass_box_rect.y, 40, 40)
-    pygame.draw.rect(screen, (255, 100, 100), pass_clear_btn, border_radius=5)
-    screen.blit(clear_x, clear_x.get_rect(center=pass_clear_btn.center))
-    
-    hint = render_pixel_text("Click fields or press TAB to switch • Press X buttons to clear • ENTER to login", 12, (150, 150, 150))
+    hint = render_pixel_text("Click fields or press TAB to switch • ENTER to login", 12, (150, 150, 150))
     screen.blit(hint, hint.get_rect(center=(screen_w // 2, screen_h // 2 + 170)))
     
     if password_error_timer > 0:
@@ -97,7 +100,7 @@ def draw_login_screen(screen, screen_w, screen_h, menu_bg, user_name, user_passw
     # Leaderboard (from main.py)
     leaderboard = []  # This will be passed in from main.py if needed
     
-    return user_box_rect, pass_box_rect, user_clear_btn, pass_clear_btn
+    return user_input_rect, pass_input_rect, None, None
 
 
 # funkcija draw_settings_overlay pieņem pygame.Surface tipa vērtību screen, int tipa vērtību screen_w, int tipa vērtību screen_h, int tipa vērtību master_volume, int tipa vērtību music_volume un int tipa vērtību sfx_volume un atgriež pygame.Rect tipa vērtību back_button_rect
