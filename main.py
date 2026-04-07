@@ -843,15 +843,30 @@ while True:
                 special_coins.remove(s)
 
         if len(hp_drops) < 1:
-            hc = HpCoin()
-            hc.rect.x, hc.rect.y = random.randint(100, screen_w-100), random.randint(100, screen_h-100)
+            # Ģenerējam pozīciju pirms objekta izveides
+            drop_x = random.randint(100, screen_w - 100)
+            drop_y = random.randint(100, screen_h - 100)
+            
+            # Izveidojam monētu (pārliecinies, ka tavā klasē __init__(self, x, y) pieņem šos mainīgos)
+            hc = HpCoin(drop_x, drop_y) 
             hp_drops.append(hc)
+
         for h in hp_drops[:]:
+            # 1. Aprēķinām attālumu
             dist = math.hypot(player.rect.centerx - h.rect.centerx, player.rect.centery - h.rect.centery)
+            
+            # 2. Magnēta loģika (pārvietojam, ja ir rādiusā)
             if dist < player.magnet_range:
-                h.rect.x += (player.rect.centerx - h.rect.centerx) * 0.1
-                h.rect.y += (player.rect.centery - h.rect.centery) * 0.1
+                # Reizinātājs 0.1 ir labs, tas liek monētai "pievilkties" plūstoši
+                h.posx += (player.rect.centerx - h.rect.centerx) * 0.1
+                h.posy += (player.rect.centery - h.rect.centery) * 0.1
+                h.rect.x = int(h.posx)
+                h.rect.y = int(h.posy)
+            
+            # 3. Zīmējam (izmantojam 'screen' vai 'surface', kā tev definēts)
             h.draw(screen)
+            
+            # 4. Sadursme
             if player.rect.colliderect(h.rect):
                 player.health = min(player.max_health, player.health + 20)
                 hp_drops.remove(h)
