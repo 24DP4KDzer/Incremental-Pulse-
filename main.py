@@ -32,6 +32,13 @@ def get_path(relative_path):
 
 # 1. INICIALIZĀCIJA
 pygame.init()
+try:
+    pygame.mixer.init()
+    pygame.mixer.music.load(get_path("audio/bg_audio.mp3"))
+    pygame.mixer.music.set_volume(0.5)
+    pygame.mixer.music.play(-1)
+except Exception:
+    pass
 screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
 screen_w, screen_h = screen.get_size()
 pygame.display.set_caption("Pulse: Evolution")
