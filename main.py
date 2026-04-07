@@ -110,7 +110,7 @@ def apply_boss_drop(player, wave):
     drop_type = random.choice(["damage", "speed", "health", "armor", "lifesteal"])
     
     if drop_type == "damage":
-        bonus = int(0.1 + (wave * 0.2))
+        bonus = int(1 + (wave * 0.2))
         player.damage += bonus
         trigger_boss_drop_anim(f"DAMAGE BOOST! +{bonus}")
     elif drop_type == "speed":
@@ -594,6 +594,9 @@ while True:
                     user_name = ""
                     user_password = ""
                     player = Player()
+                    for skill_node in skills.skills:
+                        skill_node["level"] = 0
+                        skill_node["cost"] = skill_node["base_cost"]
             elif game_state == "char_select":
                 for i in range(3):
                     rect = pygame.Rect(screen_w // 2 - 450 + (i * 310), 200, 280, 400)
@@ -612,16 +615,31 @@ while True:
             elif game_state == "skill_tree":
                 result = skills.handle_click(event.pos, player)
                 if result == "respawn":
-                    enemies.clear(); bosses.clear(); projectiles.clear(); active_swings.clear()
+                    # 1. Saglabājam svarīgāko
+                    saved_money = player.money
+                    saved_char = player.char_type
+                    
+                    # 2. Tā vietā, lai taisītu jaunu objektu (kas met kļūdu), 
+                    # mēs izmantojam esošo, bet pilnībā "iztīrām" to.
+                    player.setup_class(saved_char) # Atgriež bāzes HP, Damage, Speed
                     player.health = player.max_health
                     player.energy = player.max_energy
+                    player.money = saved_money
+                    player.boss_drops = [] # Iztīrām bosu bonusus
+                    
+                    # 3. Tikai TAGAD sinhronizējam ar Skill Tree
+                    skills.sync_with_player(player)
+                    
+                    # Atjaunojam spēles pasauli
+                    enemies.clear()
+                    bosses.clear()
+                    projectiles.clear()
                     current_wave, max_enemies = 1, 4
-                    for _ in range(max_enemies): spawn_enemy()
-                    start_transition("wipe")
                     game_state = "playing"
+                    
                 elif result == "saved":
                     save_game_csv(user_name, player.char_type, player, skills, user_password)
-                    trigger_save_anim("UZLABOTS!")
+                    trigger_save_anim("UPGRADED!")
 
     # --- MAIN MENU ---
     if game_state == "main_menu":
@@ -951,8 +969,9 @@ while True:
         draw_death_screen(screen, screen_w, screen_h, death_timer)
         death_timer -= 1
         if death_timer <= 0:
-            # Atiestatīt spēlētāja stats, lai noņemtu visus bosu dropu bonusus
-            skills.sync_with_player(player)
+            player.setup_class(player.char_type)
+            skills.sync_with_player(player)  # keeps this to reapply skills after reset
+            player.boss_drops = []
             game_state = "skill_tree"
 
     elif game_state == "skill_tree":

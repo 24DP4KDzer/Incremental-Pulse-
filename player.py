@@ -77,7 +77,20 @@ class Player:
 
     # funkcija setup_class pieņem str tipa vērtību char_type un atgriež None tipa vērtību None
     def setup_class(self, char_type):
-        """Iestata unikālus status un sagriež pareizo spreitu loksni."""
+        self.damage = 1.0
+        self.speed = 1.3
+        self.max_health = 100
+        self.attack_radius = 100
+        self.projectile_count = 1
+        self.max_energy = 10.0
+        self.magnet_range = 60
+        self.armor = 0
+        self.regen = 0.0
+        self.thorns = 0
+        self.crit_chance = 0
+        self.lifesteal = 0
+        self.dash_unlocked = False
+
         self.char_type = char_type
         
         if char_type == "wizard":
