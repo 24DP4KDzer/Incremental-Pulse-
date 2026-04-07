@@ -124,7 +124,9 @@ def apply_boss_drop(player, wave):
         trigger_boss_drop_anim(f"DAMAGE BOOST! +{bonus}")
     elif drop_type == "speed":
         if player.speed >= 22:
-            return None
+            player.money += 100 # Iedodam moneeey bonusu, ja ātrums jau ir maxed out
+            trigger_boss_drop_anim("SPEED MAXED! +$100")
+            return "money"
         else:
             bonus = round(0.2 + (wave * 0.2), 1)
             
@@ -135,21 +137,41 @@ def apply_boss_drop(player, wave):
             # Aprēķinām, cik reāli tika pieskaitīts (vizuālam efektam)
             actual_gain = round(player.speed - old_speed, 1)
             
-            if actual_gain > 0:
+            if actual_gain > 0: # Ja spēlētājs tiešām saņēma ātruma bonusu, rādam animāciju
                 trigger_boss_drop_anim(f"SPEED BOOST! +{actual_gain}")
+
+
     elif drop_type == "health":
-        health_boost = int(5 + (wave * 0.05))
+        health_boost = int(5 + (wave * 0.05)) # Neliels veselības pieaugums, kas palielinās ar katru viļņu komplektu
         player.max_health += health_boost
         player.health += health_boost
         trigger_boss_drop_anim(f"HEALTH BOOST! +{health_boost}")
+
     elif drop_type == "armor":
         armor_boost = 1 + (wave // 8) 
         player.armor = getattr(player, 'armor', 0) + armor_boost
         trigger_boss_drop_anim(f"ARMOR BOOST! +{armor_boost}")
+
     elif drop_type == "lifesteal":
-        bonus = round(wave * 0.2, 1)
-        player.lifesteal = getattr(player, 'lifesteal', 0) + bonus
-        trigger_boss_drop_anim(f"LIFESTEAL BOOST! +{bonus}")
+        if player.lifesteal >= 30:
+            player.money += 100 # Iedodam moneeey bonusu, ja lifesteal jau ir maxed out
+            trigger_boss_drop_anim("LIFESTEAL MAXED! +$100")
+            return "money"
+        else:
+            # Aprēķinām bonusu
+            bonus = round(wave * 0.2, 1)
+            
+            # Saglabājam veco vērtību, lai zinātu, cik reāli pieskaitījām
+            old_ls = player.lifesteal
+            
+            # Pieskaitām, bet ierobežojam uz 30 un noapaļojam
+            player.lifesteal = round(min(30, player.lifesteal + bonus), 1)
+            
+            # Aprēķinām faktisko ieguvumu vizuālajai animācijai
+            actual_gain = round(player.lifesteal - old_ls, 1)
+            
+            if actual_gain > 0:
+                trigger_boss_drop_anim(f"LIFESTEAL BOOST! +{actual_gain}")
 
 
 # PASTĀVĪGAIS TUMSAS (SHROUD) SLĀNIS
@@ -974,19 +996,21 @@ while True:
         stats_font_size = 14
         stats_x = screen_w - 220
         stats_y = 20
-        stats_bg = pygame.Surface((200, 160), pygame.SRCALPHA)
+        stats_bg = pygame.Surface((200, 190), pygame.SRCALPHA)
         stats_bg.fill((20, 20, 40, 200))
-        pygame.draw.rect(stats_bg, (0, 150, 200), (0, 0, 200, 160), 2)
+        pygame.draw.rect(stats_bg, (0, 150, 200), (0, 0, 200, 190), 2) 
         screen.blit(stats_bg, (stats_x, stats_y))
         
         stats_list = [
             f"DMG: {int(player.damage)}",
             f"SPD: {player.speed:.1f}",
-            f"RNG: {int(player.attack_radius)}",
-            f"ARM: {getattr(player, 'armor', 0):.1f}",
-            f"LIFE: {getattr(player, 'lifesteal', 0):.1f}",
-            f"CRIT: {getattr(player, 'crit_chance', 0)}%",
-            f"MAG: {int(player.magnet_range)}"
+            f"RANGE: {int(player.attack_radius)}",
+            f"ARMOR: {getattr(player, 'armor', 0):.1f}",
+            f"LIFESTEAL: {getattr(player, 'lifesteal', 0):.1f}",
+            f"CRIT CHANCE: {getattr(player, 'crit_chance', 0)}%",
+            f"MAGNET RANGE: {int(player.magnet_range)}",
+            f"DASH: {'YES' if getattr(player, 'dash_unlocked', False) else 'NO'}",
+            f"HEALTH: {int(player.health)}/{int(player.max_health)}"
         ]
         
         for i, stat in enumerate(stats_list):

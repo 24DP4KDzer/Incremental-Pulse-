@@ -38,7 +38,7 @@ class Boss:
         elif side == "left": x, y = -100, random.randint(0, screen_h)
         else: x, y = screen_w + 100, random.randint(0, screen_h)
 
-        self.rect = pygame.Rect(x, y, 100, 100) 
+        self.rect = pygame.Rect(x, y, 200, 200)  # Lielāks hitbox bosa attēlam
         self.wave = wave
         
         self.max_health = 10 + (0.5 * wave)
@@ -54,11 +54,13 @@ class Boss:
         self.shoot_timer = max(50, 150 - (self.wave * 10)) 
 
         try:
+            # Ielādējam un uzreiz mērogojam uz hitbox izmēru!
             self.original_image = pygame.image.load("photos/allOfBoss.png").convert_alpha()
-            self.image = pygame.transform.scale(self.original_image, (120, 120))
+            # Šeit mēs norādām 250x250, lai bilde precīzi iekļautos baltajā kvadrātā
+            self.image = pygame.transform.scale(self.original_image, (350, 350))
         except:
-            self.image = pygame.Surface((100, 100), pygame.SRCALPHA)
-            pygame.draw.rect(self.image, (200, 0, 0), (0, 0, 100, 100))
+            self.image = pygame.Surface((350, 350), pygame.SRCALPHA)
+            pygame.draw.rect(self.image, (200, 0, 0), (0, 0, 350, 350))
 
     # funkcija update pieņem pygame.Rect tipa vērtību player_rect, float tipa vērtību dilation un atgriež int tipa vērtību damage_dealt_to_player
     def update(self, player_rect, dilation):
@@ -75,10 +77,10 @@ class Boss:
         # Bosa attēla spoguļošana
         if hasattr(self, 'original_image'):
             if dx < 0 and self.direction != "left":
-                self.image = pygame.transform.flip(pygame.transform.scale(self.original_image, (120, 120)), True, False)
+                self.image = pygame.transform.flip(pygame.transform.scale(self.original_image, (350, 350)), True, False)
                 self.direction = "left"
             elif dx > 0 and self.direction != "right":
-                self.image = pygame.transform.scale(self.original_image, (120, 120))
+                self.image = pygame.transform.scale(self.original_image, (350, 350))
                 self.direction = "right"
 
         # 2. [SAREŽĢĪTA LOĢIKA]: Ugunsbumbu šaušana
@@ -110,20 +112,20 @@ class Boss:
         # 1. Vispirms uzzīmē visas ugunsbumbas (lai tās lidotu pirms/aiz bosa)
         for fireball in self.fireballs:
             fireball.draw(screen)
-            
-        # 2. Uzzīmē pašu bosu
-        new_size = (self.image.get_width() * 3, self.image.get_height() * 3)
-        bigger_image = pygame.transform.scale(self.image, new_size)
 
         # 2. Uzzīmē pašu bosu (using the new bigger image)
-        draw_rect = bigger_image.get_rect(center=self.rect.center)
-        screen.blit(bigger_image, draw_rect)
+        draw_rect = self.image.get_rect(center=self.rect.center)
+        screen.blit(self.image, draw_rect)
         
-        # 3. Uzzīmē dzīvības joslu
+        # 3. Uzzīmē HEALTH BAR virs bosa
         if self.health < self.max_health:
             health_ratio = max(0, self.health / self.max_health)
-            bar_width = 80
+            bar_width = 200 # Platāka josla, lai izskatās labāk
             bar_x = self.rect.centerx - (bar_width // 2)
-            bar_y = self.rect.y - 15
-            pygame.draw.rect(screen, (200, 0, 0), (bar_x, bar_y, bar_width, 6))
-            pygame.draw.rect(screen, (0, 255, 0), (bar_x, bar_y, bar_width * health_ratio, 6))
+            bar_y = self.rect.y - 20
+            pygame.draw.rect(screen, (200, 0, 0), (bar_x, bar_y, bar_width, 10))
+            pygame.draw.rect(screen, (0, 255, 0), (bar_x, bar_y, bar_width * health_ratio, 10))
+
+
+
+

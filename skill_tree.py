@@ -8,7 +8,7 @@ class SkillTree:
         self.screen_h = screen_h
         
         self.title_font = pygame.font.SysFont("Impact", 16)
-        self.stat_font = pygame.font.SysFont("Arial", 13, bold=True)
+        self.stat_font = pygame.font.SysFont("Arial", 18, bold=True)
         self.price_font = pygame.font.SysFont("Consolas", 13, bold=True)
         
         self.circle_radius = 38 
@@ -86,7 +86,7 @@ class SkillTree:
             elif skill_node["id"] == "dash": player.dash_unlocked = True
             elif skill_node["id"] == "stamina": player.max_energy += 5 * lvl
             elif skill_node["id"] == "crit": player.crit_chance = getattr(player, 'crit_chance', 0) + (5 * lvl)
-            elif skill_node["id"] == "lifesteal": player.lifesteal = getattr(player, 'lifesteal', 0) + lvl
+            elif skill_node["id"] == "lifesteal": player.lifesteal = min(30, player.lifesteal + lvl)
 
             if skill_node["currency"] == "gold":
                 skill_node["cost"] = int(skill_node["base_cost"] * (1.5 ** lvl))
@@ -116,20 +116,35 @@ class SkillTree:
                 if skill_node["id"] == "health":
                     player.max_health += player.max_health * 0.1
                     player.health += player.max_health * 0.1
+
                 elif skill_node["id"] == "armor":
                     player.armor = getattr(player, 'armor', 0) + 1
+
                 elif skill_node["id"] == "regen":
                     player.regen = getattr(player, 'regen', 0) + 0.01
+
                 elif skill_node["id"] == "range":
                     player.attack_radius = min(250, player.attack_radius + 15)
+
                 elif skill_node["id"] == "multi":
                     player.projectile_count = min(5, getattr(player, 'projectile_count', 1) + 1)
+
                 elif skill_node["id"] == "damage":
                     player.damage += 0.5
                 elif skill_node["id"] == "speed":
                     if player.speed >= 22:
+                        # Atceļam pirkumu, jo limits sasniegts
+                        skill_node["level"] -= 1 # Atgriežam līmeni atpakaļ, jo tas tika palielināts pirms if
                         return None
                     player.speed = min(22, player.speed + 0.4)
+                
+                elif skill_node["id"] == "lifesteal":
+                    # Hard Cap pārbaude (pieņemsim, ka max ir 30, kā tavā sync funkcijā)
+                    if getattr(player, 'lifesteal', 0) >= 30:
+                        skill_node["level"] -= 1
+                        return None
+                    player.lifesteal = min(30, getattr(player, 'lifesteal', 0) + 1)
+
                 elif skill_node["id"] == "magnet":
                     player.magnet_range = min(300, player.magnet_range + 15)
                 elif skill_node["id"] == "dash":
