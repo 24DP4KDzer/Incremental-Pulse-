@@ -36,6 +36,11 @@ save_notification_timer = 0
 save_notification_msg = ""
 boss_drop_timer = 0
 boss_drop_msg = ""
+# --- CINEMATIC TRANSITION EFFECTS ---
+transition_active = False
+transition_timer = 0
+transition_duration = 15  # frames for fade effects (0.25 seconds at 60 FPS)
+transition_type = "fade"  # "fade", "wipe", "dissolve"
 current_wave = 1
 game_state, user_name = "menu", ""
 user_password = ""
@@ -229,6 +234,58 @@ def trigger_boss_drop_anim(msg):
     global boss_drop_timer, boss_drop_msg
     boss_drop_timer = 180
     boss_drop_msg = msg
+
+# funkcija start_transition pieņem str tipa vērtību trans_type un atgriež None tipa vērtību None
+def start_transition(trans_type="fade"):
+    global transition_active, transition_timer, transition_type
+    transition_active = True
+    transition_timer = transition_duration
+    transition_type = trans_type
+
+# funkcija render_transition pieņem pygame.Surface tipa vērtību surface un atgriež None tipa vērtību None
+def render_transition(surface):
+    global transition_active, transition_timer
+    if not transition_active:
+        return
+    
+    if transition_type == "fade":
+        # Fade to black and back
+        progress = 1.0 - (transition_timer / transition_duration)
+        if progress > 0.5:
+            alpha = int(255 * (2 * (progress - 0.5)))  # Second half: fade out
+        else:
+            alpha = int(255 * (1 - 2 * progress))  # First half: fade in
+        
+        fade_surf = pygame.Surface((screen_w, screen_h))
+        fade_surf.fill((0, 0, 0))
+        fade_surf.set_alpha(alpha)
+        surface.blit(fade_surf, (0, 0))
+    
+    elif transition_type == "wipe":
+        # Screen wipe from right
+        progress = 1.0 - (transition_timer / transition_duration)
+        wipe_x = int(screen_w * progress)
+        wipe_surf = pygame.Surface((screen_w - wipe_x, screen_h))
+        wipe_surf.fill((0, 0, 0))
+        surface.blit(wipe_surf, (wipe_x, 0))
+    
+    elif transition_type == "dissolve":
+        # Pixelated dissolve effect
+        progress = 1.0 - (transition_timer / transition_duration)
+        pixel_size = int(20 * progress)
+        if pixel_size > 0:
+            dissolve_surf = pygame.Surface((screen_w, screen_h))
+            dissolve_surf.fill((0, 0, 0))
+            for x in range(0, screen_w, pixel_size + 1):
+                for y in range(0, screen_h, pixel_size + 1):
+                    if random.random() < progress:
+                        pygame.draw.rect(dissolve_surf, (0, 0, 0), (x, y, pixel_size, pixel_size))
+            dissolve_surf.set_alpha(int(255 * progress))
+            surface.blit(dissolve_surf, (0, 0))
+    
+    transition_timer -= 1
+    if transition_timer <= 0:
+        transition_active = False
 
 # funkcija save_game_csv pieņem str tipa vērtību name, str tipa vērtību char_type, Player tipa vērtību p, SkillTree tipa vērtību s_tree un str tipa vērtību password un atgriež None tipa vērtību None
 def save_game_csv(name, char_type, p, s_tree, password=""):
@@ -462,9 +519,11 @@ while True:
                     player.dash_cooldown = 60
 
             elif game_state == "playing" and event.key == pygame.K_p:
+                start_transition("dissolve")
                 game_state = "paused"
 
             elif game_state == "paused" and event.key == pygame.K_ESCAPE:
+                start_transition("fade")
                 game_state = "playing"
 
         if event.type == pygame.MOUSEBUTTONDOWN:
@@ -473,9 +532,11 @@ while True:
                     save_game_csv(user_name, player.char_type, player, skills, user_password)
                     trigger_save_anim("GAME SAVED!")
                 elif pause_resume_btn.collidepoint(event.pos):
+                    start_transition("fade")
                     game_state = "playing"
                 elif pause_quit_btn.collidepoint(event.pos):
                     save_game_csv(user_name, player.char_type, player, skills, user_password)
+                    start_transition("fade")
                     game_state = "menu"
                     user_name = ""
                     user_password = ""
@@ -503,6 +564,7 @@ while True:
                     player.energy = player.max_energy
                     current_wave, max_enemies = 1, 4
                     for _ in range(max_enemies): spawn_enemy()
+                    start_transition("wipe")
                     game_state = "playing"
                 elif result == "saved":
                     save_game_csv(user_name, player.char_type, player, skills, user_password)
@@ -937,9 +999,30 @@ while True:
         screen.blit(hint, (screen_w // 2 - hint.get_width() // 2, screen_h - 50))
 
     elif game_state == "dead":
-        screen.fill((5, 5, 15))
-        msg = pygame.font.SysFont("Impact", 100).render("GAME OVER", True, (255, 0, 0))
-        screen.blit(msg, msg.get_rect(center=(screen_w // 2, screen_h // 2)))
+        # Death cinematic: Fade to black, then show GAME OVER
+        progress = 1.0 - (death_timer / 120.0)  # 0 at start, 1 at end
+        
+        # Phase 1 (0-0.5): Fade the game to black
+        if progress < 0.5:
+            fade_alpha = int(255 * (progress * 2))  # 0 -> 255 over first half
+            fade_surf = pygame.Surface((screen_w, screen_h))
+            fade_surf.fill((0, 0, 0))
+            fade_surf.set_alpha(fade_alpha)
+            screen.blit(fade_surf, (0, 0))
+            
+            # Optional: Red vignette effect during fade
+            vignette = pygame.Surface((screen_w, screen_h), pygame.SRCALPHA)
+            vignette.fill((139, 0, 0, int(100 * (progress * 2))))
+            screen.blit(vignette, (0, 0))
+        else:
+            # Phase 2 (0.5-1.0): Show GAME OVER text fading in
+            screen.fill((5, 5, 15))
+            text_alpha = int(255 * ((progress - 0.5) * 2))  # 0 -> 255 over second half
+            msg = pygame.font.SysFont("Impact", 100).render("GAME OVER", True, (255, 0, 0))
+            msg_with_alpha = msg.copy()
+            msg_with_alpha.set_alpha(text_alpha)
+            screen.blit(msg_with_alpha, msg_with_alpha.get_rect(center=(screen_w // 2, screen_h // 2)))
+        
         death_timer -= 1
         if death_timer <= 0:
             # Atiestatīt spēlētāja stats, lai noņemtu visus bosu dropu bonusus
@@ -952,6 +1035,9 @@ while True:
             t = pygame.font.SysFont("Arial", 22, bold=True).render(save_notification_msg, True, (0, 255, 150))
             screen.blit(t, t.get_rect(center=(screen_w // 2, 40)))
             save_notification_timer -= 1
+
+    # Render cinematic transition effects
+    render_transition(screen)
 
     pygame.display.flip()
     clock.tick(60)
