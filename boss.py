@@ -105,8 +105,12 @@ class Boss:
             fb.draw(screen)
             
         # 2. Uzzīmē pašu bosu
-        draw_rect = self.image.get_rect(center=self.rect.center)
-        screen.blit(self.image, draw_rect)
+        new_size = (self.image.get_width() * 3, self.image.get_height() * 3)
+        bigger_image = pygame.transform.scale(self.image, new_size)
+
+        # 2. Uzzīmē pašu bosu (using the new bigger image)
+        draw_rect = bigger_image.get_rect(center=self.rect.center)
+        screen.blit(bigger_image, draw_rect)
         
         # 3. Uzzīmē dzīvības joslu
         if self.health < self.max_health:
