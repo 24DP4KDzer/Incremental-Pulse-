@@ -38,7 +38,7 @@ MUSIC_END_EVENT = pygame.USEREVENT + 1
 bg_music_files = []
 current_music_index = 0
 master_volume = 100
-music_volume = 100
+music_volume = 10
 sfx_volume = 100
 
 def get_background_music_files():
@@ -111,7 +111,7 @@ show_settings = False
 # --- SETTINGS ---
 show_settings = False
 master_volume = 100
-music_volume = 100
+music_volume = 10
 sfx_volume = 100
 settings_buttons = {}
 
