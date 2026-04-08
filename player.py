@@ -255,9 +255,8 @@ class Player:
             self._draw_speech_bubble(screen)
 
     # funkcija _draw_speech_bubble pieņem Player tipa vērtību self un pygame.Surface tipa vērtību screen un atgriež None tipa vērtību None
-    def _draw_speech_bubble(self, screen):
-        """Draw a speech bubble above the player with kill progress text"""
-        # Get kill timer from global scope (passed via player attribute)
+    def _draw_speech_bubble(self, screen): # Šī funkcija tiek izsaukta tikai tad, kad spēlētājs ir "kill mode" stāvoklī
+        
         kill_timer = getattr(self, 'kill_timer', 0)
         kill_duration = getattr(self, 'kill_duration', 180)
         

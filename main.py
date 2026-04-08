@@ -319,7 +319,7 @@ class MeleeSwing:
             base_spin_speed = 5  # Start slow
             # Calculate speed increase based on how much faster than base cooldown we are
             cooldown_reduction = max(0, 25 - owner.base_cooldown)  # 25 is base cooldown
-            speed_multiplier = (cooldown_reduction * 0.1)  # More significant speed increase
+            speed_multiplier = max(1, 1 + cooldown_reduction * 0.1)  # Always at least 1
             self.spin_speed = base_spin_speed * speed_multiplier
             # Dwarf axes spin continuously, so longer lifetime
             self.lifetime = 600  # Much longer lifetime for continuous spinning
