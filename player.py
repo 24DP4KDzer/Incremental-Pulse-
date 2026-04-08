@@ -1,5 +1,6 @@
 import pygame
 import math
+from fonts import render_pixel_text
 
 # --- PALĪGFUNKCIJA SPREITU LOKSNĒM ---
 # funkcija get_image_from_sheet pieņem pygame.Surface tipa vērtību sheet un atgriež pygame.Surface tipa vērtību image
@@ -248,11 +249,63 @@ class Player:
 
             draw_pos = self.image.get_rect(center=self.rect.center)
             screen.blit(self.image, draw_pos)
-        else:
-            # Atkāpšanās variants, ja attēls pilnībā neielādējas
-            pygame.draw.rect(screen, self.color, self.rect)
+
+        # Draw speech bubble if in kill mode
+        if getattr(self, 'kill_mode', False):
+            self._draw_speech_bubble(screen)
+
+    # funkcija _draw_speech_bubble pieņem Player tipa vērtību self un pygame.Surface tipa vērtību screen un atgriež None tipa vērtību None
+    def _draw_speech_bubble(self, screen):
+        """Draw a speech bubble above the player with kill progress text"""
+        # Get kill timer from global scope (passed via player attribute)
+        kill_timer = getattr(self, 'kill_timer', 0)
+        kill_duration = getattr(self, 'kill_duration', 180)
         
-        # Vizuālais efekts tuvcīņas (Melee) uzbrukumiem
-        if self.attacking and self.attack_style == "melee":
-            alpha_radius = int(self.attack_radius * (self.attack_timer / 15))
-            pygame.draw.circle(screen, (255, 255, 255), self.rect.center, alpha_radius, 3)
+        if kill_timer >= kill_duration:
+            bubble_text = "Goodbye, cruel world..."
+        elif kill_timer > kill_duration * 0.66:
+            bubble_text = "Is This Really The End?"
+        elif kill_timer > kill_duration * 0.33:
+            bubble_text = "Is This The End?"
+        else:
+            bubble_text = "Hold K to end it all..."
+            
+        text_surface = render_pixel_text(bubble_text, 14, (0, 0, 0), bold=True)
+        
+        # Bubble dimensions
+        text_width = text_surface.get_width()
+        text_height = text_surface.get_height()
+        padding = 10
+        bubble_width = text_width + padding * 2
+        bubble_height = text_height + padding * 2
+        
+        # Bubble position (above player's head)
+        bubble_x = self.rect.centerx - bubble_width // 2
+        bubble_y = self.rect.top - bubble_height - 20
+        
+        # Draw bubble background (white with black border)
+        bubble_rect = pygame.Rect(bubble_x, bubble_y, bubble_width, bubble_height)
+        pygame.draw.rect(screen, (255, 255, 255), bubble_rect, border_radius=8)
+        pygame.draw.rect(screen, (0, 0, 0), bubble_rect, 2, border_radius=8)
+        
+        # Draw pointer/tail pointing down to player
+        pointer_x = self.rect.centerx
+        pointer_y = self.rect.top - 20
+        pointer_points = [
+            (pointer_x, pointer_y),
+            (pointer_x - 8, pointer_y - 10),
+            (pointer_x + 8, pointer_y - 10)
+        ]
+        pygame.draw.polygon(screen, (255, 255, 255), pointer_points)
+        pygame.draw.polygon(screen, (0, 0, 0), pointer_points, 2)
+        
+        # Draw text centered in bubble
+        text_x = bubble_x + (bubble_width - text_width) // 2
+        text_y = bubble_y + (bubble_height - text_height) // 2
+        screen.blit(text_surface, (text_x, text_y))
+        
+        # Draw progress bar for kill timer
+        if kill_timer > 0 and kill_timer < kill_duration:
+            progress_width = int((kill_timer / kill_duration) * (bubble_width - 20))
+            progress_rect = pygame.Rect(bubble_x + 10, bubble_y + bubble_height - 8, progress_width, 4)
+            pygame.draw.rect(screen, (255, 0, 0), progress_rect)  # Red progress bar

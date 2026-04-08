@@ -36,6 +36,7 @@ class SkillTree:
             
             {"id": "multi", "name": "MULTI-PROJECTILE", "pos": (center_x + 120, center_y - 220), "cost": 3, "level": 0, "max": 3, "color": (255, 255, 100), "req": "damage", "currency": "sp"},
             {"id": "crit", "name": "CRIT CHANCE", "pos": (center_x + 120, center_y - 330), "cost": 50, "level": 0, "max": 10, "color": (255, 0, 0), "req": "multi", "currency": "gold"},
+            {"id": "firerate", "name": "ATTACK SPEED", "pos": (center_x + 240, center_y - 330), "cost": 45, "level": 0, "max": 10, "color": (255, 100, 100), "req": "crit", "currency": "gold"},
 
             # ZARS UZ LEJU: DEFENSE (Dzīvība un aizsardzība)
             {"id": "health", "name": "MAX HEALTH", "pos": (center_x, center_y + 130), "cost": 20, "level": 0, "max": 10, "color": (255, 60, 60), "req": None, "currency": "gold"},
@@ -87,6 +88,7 @@ class SkillTree:
             elif skill_node["id"] == "stamina": player.max_energy += 5 * lvl
             elif skill_node["id"] == "crit": player.crit_chance = getattr(player, 'crit_chance', 0) + (5 * lvl)
             elif skill_node["id"] == "lifesteal": player.lifesteal = min(30, player.lifesteal + lvl)
+            elif skill_node["id"] == "firerate": player.base_cooldown = max(5, player.base_cooldown - (2 * lvl))
 
             if skill_node["currency"] == "gold":
                 skill_node["cost"] = int(skill_node["base_cost"] * (1.5 ** lvl))

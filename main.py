@@ -84,6 +84,11 @@ show_settings = False
 master_volume = 100
 music_volume = 100
 sfx_volume = 100
+settings_buttons = {}
+
+# --- KILL TIMER ---
+kill_hold_timer = 0
+KILL_HOLD_DURATION = 180  # 3 seconds at 60 FPS
 
 pause_save_btn = pygame.Rect(0, 0, 0, 0)
 pause_resume_btn = pygame.Rect(0, 0, 0, 0)
@@ -267,57 +272,183 @@ class MeleeSwing:
         self.spin_speed = getattr(owner, 'rotation_speed', 20)
         self.radius = owner.attack_radius
         self.lifetime = 360 // self.spin_speed
+        self.is_dwarf = owner.char_type == "dwarf"
+        self.damage = damage
+        self.enemies = enemies  # Store enemies for continuous damage
+        
+        if self.is_dwarf:
+            # Dwarf has spinning axes - get number of axes from multi skill
+            self.num_axes = getattr(owner, 'projectile_count', 1)
+            # Base spin speed is slow, increases with attack speed upgrades
+            base_spin_speed = 5  # Start slow
+            # Calculate speed increase based on how much faster than base cooldown we are
+            cooldown_reduction = max(0, 25 - owner.base_cooldown)  # 25 is base cooldown
+            speed_multiplier = 1 + (cooldown_reduction * 0.3)  # More significant speed increase
+            self.spin_speed = base_spin_speed * speed_multiplier
+            # Dwarf axes spin continuously, so longer lifetime
+            self.lifetime = 600  # Much longer lifetime for continuous spinning
+        else:
+            # Regular melee swing for other characters - do damage immediately
+            self.num_axes = 1
+            self.do_damage()
 
-        # [SAREŽĢĪTA LOĢIKA]: Tuvcīņas sadursmes un atsitiena aprēķins
-        # Cikls iet cauri visiem ienaidniekiem, lai aprēķinātu to attālumu no spēlētāja centra
-        # Izmanto Pitagora teorēmu (math.hypot), lai noteiktu eiklīda distanci.
-        for e in enemies:
-            dist = math.hypot(owner.rect.centerx - e.rect.centerx, owner.rect.centery - e.rect.centery)
-            
-            # Ja ienaidnieks atrodas ieroča rādiusā (+ 25 pikseļu kļūdas robeža)
-            if dist <= self.radius + 25:
-                enemy_armor = getattr(e, 'armor', 0)
-                base_dmg = max(1, damage - enemy_armor) # Neļauj bojājumam būt mazākam par 1
-                final_dmg = base_dmg
-                
-                # Kritiskā sitiena aprēķins
-                if random.randint(1, 100) <= getattr(owner, 'crit_chance', 0):
-                    final_dmg *= 2
-                
-                e.health -= final_dmg
-                
-                # Dzīvības zādzības (lifesteal) atjaunošana
-                if getattr(owner, 'lifesteal', 0) > 0:
-                    owner.health = min(owner.max_health, owner.health + owner.lifesteal)
-                
-                # Atsitiena (knockback) vektora aprēķins
-                # Mēs noskaidrojam x un y virzienu no spēlētāja uz ienaidnieku,
-                # un tad normalizējam to (dalot ar dist_kb), lai ienaidnieku atgrūstu tieši par 10 pikseļiem abās asīs.
-                if hasattr(e, 'rect'):
-                    dx = e.rect.centerx - owner.rect.centerx
-                    dy = e.rect.centery - owner.rect.centery
-                    dist_kb = math.hypot(dx, dy)
-                    if dist_kb != 0:
-                        e.rect.x += (dx / dist_kb) * 10
-                        e.rect.y += (dy / dist_kb) * 10
+        # Create axe surface only for non-dwarf characters
+        if not self.is_dwarf:
+            self.surface = pygame.Surface((70, 35), pygame.SRCALPHA)
+            pygame.draw.rect(self.surface, (100, 50, 0), (0, 12, 50, 10))
+            pygame.draw.rect(self.surface, (200, 200, 200), (45, 0, 25, 35))
 
-        self.surface = pygame.Surface((70, 35), pygame.SRCALPHA)
-        pygame.draw.rect(self.surface, (100, 50, 0), (0, 12, 50, 10))
-        pygame.draw.rect(self.surface, (200, 200, 200), (45, 0, 25, 35))
+    # funkcija do_damage pieņem MeleeSwing tipa vērtību self un atgriež None tipa vērtību None
+    def do_damage(self):
+        if self.is_dwarf:
+            # Damage via lines from player to each axe
+            for i in range(self.num_axes):
+                axe_angle = self.angle + (360 / self.num_axes) * i
+                rad = math.radians(axe_angle)
+                
+                # Calculate axe position
+                axe_x = self.owner.rect.centerx + math.cos(rad) * self.radius
+                axe_y = self.owner.rect.centery + math.sin(rad) * self.radius
+                
+                # Line from player center to axe
+                line_start = (self.owner.rect.centerx, self.owner.rect.centery)
+                line_end = (axe_x, axe_y)
+                
+                # Check each enemy for collision with this damage line
+                for e in self.enemies:
+                    if not hasattr(e, 'rect') or e.health <= 0:
+                        continue
+                    
+                    # Calculate distance from enemy center to line
+                    dist_to_line = self._point_to_line_distance(e.rect.center, line_start, line_end)
+                    
+                    # If enemy is close enough to the line (enemy radius + line thickness)
+                    enemy_radius = 15  # Approximate enemy hitbox radius
+                    line_thickness = 8  # Damage line thickness
+                    
+                    if dist_to_line <= enemy_radius + line_thickness:
+                        enemy_armor = getattr(e, 'armor', 0)
+                        base_dmg = max(1, self.damage - enemy_armor)
+                        final_dmg = base_dmg
+                        
+                        # Critical hit chance
+                        if random.randint(1, 100) <= getattr(self.owner, 'crit_chance', 0):
+                            final_dmg *= 2
+                        
+                        e.health -= final_dmg
+                        
+                        # Lifesteal
+                        if getattr(self.owner, 'lifesteal', 0) > 0:
+                            self.owner.health = min(self.owner.max_health, self.owner.health + self.owner.lifesteal)
+                        
+                        # Knockback
+                        if hasattr(e, 'rect'):
+                            dx = e.rect.centerx - self.owner.rect.centerx
+                            dy = e.rect.centery - self.owner.rect.centery
+                            dist_kb = math.hypot(dx, dy)
+                            if dist_kb != 0:
+                                e.rect.x += (dx / dist_kb) * 10
+                                e.rect.y += (dy / dist_kb) * 10
+        else:
+            # Original circular damage for non-dwarf characters
+            for e in self.enemies:
+                if not hasattr(e, 'rect') or e.health <= 0:
+                    continue
+                    
+                dist = math.hypot(self.owner.rect.centerx - e.rect.centerx, self.owner.rect.centery - e.rect.centery)
+                
+                if dist <= self.radius + 25:
+                    enemy_armor = getattr(e, 'armor', 0)
+                    base_dmg = max(1, self.damage - enemy_armor)
+                    final_dmg = base_dmg
+                    
+                    if random.randint(1, 100) <= getattr(self.owner, 'crit_chance', 0):
+                        final_dmg *= 2
+                    
+                    e.health -= final_dmg
+                    
+                    if getattr(self.owner, 'lifesteal', 0) > 0:
+                        self.owner.health = min(self.owner.max_health, self.owner.health + self.owner.lifesteal)
+                    
+                    if hasattr(e, 'rect'):
+                        dx = e.rect.centerx - self.owner.rect.centerx
+                        dy = e.rect.centery - self.owner.rect.centery
+                        dist_kb = math.hypot(dx, dy)
+                        if dist_kb != 0:
+                            e.rect.x += (dx / dist_kb) * 10
+                            e.rect.y += (dy / dist_kb) * 10
+
+    # funkcija _point_to_line_distance pieņem MeleeSwing tipa vērtību self, tuple tipa vērtību point, tuple tipa vērtību line_start un tuple tipa vērtību line_end un atgriež float tipa vērtību distance
+    def _point_to_line_distance(self, point, line_start, line_end):
+        """Calculate distance from point to line segment"""
+        px, py = point
+        x1, y1 = line_start
+        x2, y2 = line_end
+        
+        # Vector from line_start to line_end
+        dx = x2 - x1
+        dy = y2 - y1
+        
+        # If line has zero length, return distance to start point
+        if dx == 0 and dy == 0:
+            return math.hypot(px - x1, py - y1)
+        
+        # Parameter t represents position along line segment
+        t = max(0, min(1, ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy)))
+        
+        # Closest point on line segment
+        closest_x = x1 + t * dx
+        closest_y = y1 + t * dy
+        
+        # Distance from point to closest point on line
+        return math.hypot(px - closest_x, py - closest_y)
 
     # funkcija update pieņem MeleeSwing tipa vērtību self un atgriež None tipa vērtību None
     def update(self):
         self.angle += self.spin_speed
         self.lifetime -= 1
+        
+        # For dwarf, do damage continuously as axes spin
+        if self.is_dwarf:
+            self.do_damage()
 
     # funkcija draw pieņem MeleeSwing tipa vērtību self un pygame.Surface tipa vērtību surface un atgriež None tipa vērtību None
     def draw(self, surface):
-        rotated_axe = pygame.transform.rotate(self.surface, -self.angle)
-        rad = math.radians(self.angle)
-        pos_x = self.owner.rect.centerx + math.cos(rad) * self.radius
-        pos_y = self.owner.rect.centery + math.sin(rad) * self.radius
-        rect = rotated_axe.get_rect(center=(pos_x, pos_y))
-        surface.blit(rotated_axe, rect)
+        if self.is_dwarf:
+            # Draw damage lines and spinning axes for dwarf
+            for i in range(self.num_axes):
+                # Calculate angle for each axe (evenly distributed)
+                axe_angle = self.angle + (360 / self.num_axes) * i
+                rad = math.radians(axe_angle)
+                
+                # Calculate axe position
+                axe_x = self.owner.rect.centerx + math.cos(rad) * self.radius
+                axe_y = self.owner.rect.centery + math.sin(rad) * self.radius
+                
+                # Draw damage line from player to axe (semi-transparent)
+                line_surface = pygame.Surface((surface.get_width(), surface.get_height()), pygame.SRCALPHA)
+                pygame.draw.line(line_surface, (255, 100, 100, 150), 
+                               (self.owner.rect.centerx, self.owner.rect.centery), 
+                               (axe_x, axe_y), 3)
+                surface.blit(line_surface, (0, 0))
+                
+                # Create axe surface
+                axe_surface = pygame.Surface((70, 35), pygame.SRCALPHA)
+                pygame.draw.rect(axe_surface, (100, 50, 0), (0, 12, 50, 10))
+                pygame.draw.rect(axe_surface, (200, 200, 200), (45, 0, 25, 35))
+                
+                # Rotate axe
+                rotated_axe = pygame.transform.rotate(axe_surface, -axe_angle)
+                rect = rotated_axe.get_rect(center=(axe_x, axe_y))
+                surface.blit(rotated_axe, rect)
+        else:
+            # Regular melee swing for other characters
+            rotated_axe = pygame.transform.rotate(self.surface, -self.angle)
+            rad = math.radians(self.angle)
+            pos_x = self.owner.rect.centerx + math.cos(rad) * self.radius
+            pos_y = self.owner.rect.centery + math.sin(rad) * self.radius
+            rect = rotated_axe.get_rect(center=(pos_x, pos_y))
+            surface.blit(rotated_axe, rect)
 
 # funkcija trigger_save_anim pieņem str tipa vērtību msg un atgriež None tipa vērtību None
 # funkcija trigger_save_anim pieņem str tipa vērtību msg un atgriež None tipa vērtību None
@@ -649,8 +780,25 @@ while True:
                 elif settings_btn.collidepoint(event.pos):
                     show_settings = True
             
-                if back_btn.collidepoint(event.pos):
-                    show_settings = False
+                if show_settings and settings_buttons:
+                    if settings_buttons['back'].collidepoint(event.pos):
+                        show_settings = False
+                    elif settings_buttons['master_minus'].collidepoint(event.pos):
+                        master_volume = max(0, master_volume - 10)
+                        pygame.mixer.music.set_volume(master_volume / 100)
+                    elif settings_buttons['master_plus'].collidepoint(event.pos):
+                        master_volume = min(100, master_volume + 10)
+                        pygame.mixer.music.set_volume(master_volume / 100)
+                    elif settings_buttons['music_minus'].collidepoint(event.pos):
+                        music_volume = max(0, music_volume - 10)
+                        pygame.mixer.music.set_volume((master_volume / 100) * (music_volume / 100))
+                    elif settings_buttons['music_plus'].collidepoint(event.pos):
+                        music_volume = min(100, music_volume + 10)
+                        pygame.mixer.music.set_volume((master_volume / 100) * (music_volume / 100))
+                    elif settings_buttons['sfx_minus'].collidepoint(event.pos):
+                        sfx_volume = max(0, sfx_volume - 10)
+                    elif settings_buttons['sfx_plus'].collidepoint(event.pos):
+                        sfx_volume = min(100, sfx_volume + 10)
             elif game_state == "menu":
                 if user_input_rect.collidepoint(event.pos):
                     input_field_active = "username"
@@ -728,7 +876,7 @@ while True:
     
     # --- SETTINGS OVERLAY (drawn on top of current screen) ---
     if show_settings and game_state != "playing":
-        back_btn = draw_settings_overlay(screen, screen_w, screen_h, master_volume, music_volume, sfx_volume, back_img)
+        settings_buttons = draw_settings_overlay(screen, screen_w, screen_h, master_volume, music_volume, sfx_volume, back_img)
 
     # --- MENU + LOGIN/REGISTER (MERGED) ---
     elif game_state == "menu":
@@ -836,6 +984,20 @@ while True:
         player.move(pygame.key.get_pressed())
         player.rect.clamp_ip(screen.get_rect())
 
+        # Check for kill key (hold K for 3 seconds to kill player)
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_k]:
+            kill_hold_timer += 1
+            if kill_hold_timer >= KILL_HOLD_DURATION:
+                player.health = 0
+                kill_hold_timer = 0  # Reset timer after death
+        else:
+            kill_hold_timer = 0
+        
+        player.kill_mode = kill_hold_timer > 0
+        player.kill_timer = kill_hold_timer
+        player.kill_duration = KILL_HOLD_DURATION
+
         while len(coins) < 5: spawn_coin()
         for c in coins[:]:
             dist = math.hypot(player.rect.centerx - c.rect.centerx, player.rect.centery - c.rect.centery)
@@ -912,8 +1074,11 @@ while True:
         # [SAREŽĢĪTA LOĢIKA]: Automātiskā šaušana un mērķēšana
         if player.attack_cooldown <= 0:
             if player.char_type == "dwarf":
-                # Rūķis veic apļveida sitienu visiem, kas ir apkārt
-                active_swings.append(MeleeSwing(player, enemies + bosses, player.damage))
+                # Dwarf maintains continuous spinning axes
+                # Check if dwarf already has a swing active
+                dwarf_swing_exists = any(s.is_dwarf for s in active_swings)
+                if not dwarf_swing_exists:
+                    active_swings.append(MeleeSwing(player, enemies + bosses, player.damage))
                 player.attack_cooldown = player.base_cooldown
             else:
                 # Burvis un Ēna izmanto tēmēšanu:
@@ -929,6 +1094,9 @@ while True:
                     player.attack_cooldown = player.base_cooldown
 
         for s in active_swings[:]:
+            # Update dwarf swings with current enemies
+            if s.is_dwarf:
+                s.enemies = enemies + bosses
             s.update(); s.draw(screen)
             if s.lifetime <= 0: active_swings.remove(s)
 

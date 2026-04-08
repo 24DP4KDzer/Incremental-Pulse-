@@ -142,15 +142,43 @@ def draw_settings_overlay(screen, screen_w, screen_h, master_volume, music_volum
     title = render_pixel_text("SETTINGS", 44, (0, 255, 150), bold=True)
     screen.blit(title, (screen_w // 2 - title.get_width() // 2, 100))
     
-    # Master Volume
     vol_font_large = 20
+    button_rects = {}
+    
+    # Master Volume
     screen.blit(render_pixel_text(f"Master Volume: {master_volume}%", vol_font_large, (255, 255, 255)), (200, 250))
+    master_minus = pygame.Rect(200, 290, 50, 40)
+    master_plus = pygame.Rect(260, 290, 50, 40)
+    pygame.draw.rect(screen, (100, 100, 150), master_minus, border_radius=5)
+    pygame.draw.rect(screen, (100, 100, 150), master_plus, border_radius=5)
+    minus_text = render_pixel_text("-", 24, (255, 255, 255))
+    plus_text = render_pixel_text("+", 24, (255, 255, 255))
+    screen.blit(minus_text, minus_text.get_rect(center=master_minus.center))
+    screen.blit(plus_text, plus_text.get_rect(center=master_plus.center))
+    button_rects['master_minus'] = master_minus
+    button_rects['master_plus'] = master_plus
     
     # Music Volume
     screen.blit(render_pixel_text(f"Music Volume: {music_volume}%", vol_font_large, (255, 255, 255)), (200, 350))
+    music_minus = pygame.Rect(200, 390, 50, 40)
+    music_plus = pygame.Rect(260, 390, 50, 40)
+    pygame.draw.rect(screen, (100, 100, 150), music_minus, border_radius=5)
+    pygame.draw.rect(screen, (100, 100, 150), music_plus, border_radius=5)
+    screen.blit(minus_text, minus_text.get_rect(center=music_minus.center))
+    screen.blit(plus_text, plus_text.get_rect(center=music_plus.center))
+    button_rects['music_minus'] = music_minus
+    button_rects['music_plus'] = music_plus
     
     # SFX Volume
     screen.blit(render_pixel_text(f"SFX Volume: {sfx_volume}%", vol_font_large, (255, 255, 255)), (200, 450))
+    sfx_minus = pygame.Rect(200, 490, 50, 40)
+    sfx_plus = pygame.Rect(260, 490, 50, 40)
+    pygame.draw.rect(screen, (100, 100, 150), sfx_minus, border_radius=5)
+    pygame.draw.rect(screen, (100, 100, 150), sfx_plus, border_radius=5)
+    screen.blit(minus_text, minus_text.get_rect(center=sfx_minus.center))
+    screen.blit(plus_text, plus_text.get_rect(center=sfx_plus.center))
+    button_rects['sfx_minus'] = sfx_minus
+    button_rects['sfx_plus'] = sfx_plus
     
     # Back Button
     back_btn = pygame.Rect(screen_w // 2 - 75, screen_h - 150, 150, 50)
@@ -164,4 +192,5 @@ def draw_settings_overlay(screen, screen_w, screen_h, master_volume, music_volum
         back_text = render_pixel_text("BACK", UI_MEDIUM, (0, 0, 0), bold=True)
         screen.blit(back_text, back_text.get_rect(center=back_btn.center))
     
-    return back_btn
+    button_rects['back'] = back_btn
+    return button_rects
