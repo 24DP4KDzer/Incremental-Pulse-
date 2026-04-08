@@ -41,9 +41,9 @@ class Boss:
         self.rect = pygame.Rect(x, y, 200, 200)  # Lielāks hitbox bosa attēlam
         self.wave = wave
         
-        self.max_health = 10 + (0.5 * wave)
+        self.max_health = 20 + (1.5 * wave)
         self.health = self.max_health
-        self.speed = min(3.0, 1.2 + (wave * 0.05))
+        self.speed = min(5.0, 1.2 + (wave * 0.05))
         self.armor = wave // 3
 
         self.direction = "right"

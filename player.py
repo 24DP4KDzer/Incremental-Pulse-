@@ -98,7 +98,7 @@ class Player:
             self.attack_radius, self.attack_style = 250, "homing"
         elif char_type == "shadow":
             self.speed, self.max_health, self.color = 8, 60, (150, 100, 255)
-            self.attack_radius, self.attack_style = 150, "homing"
+            self.attack_radius, self.attack_style, self.crit_chance = 150, "homing", 10
         elif char_type == "dwarf":
             self.speed, self.max_health, self.color = 3, 150, (255, 250, 100)
             self.attack_radius, self.attack_style = 120, "melee"

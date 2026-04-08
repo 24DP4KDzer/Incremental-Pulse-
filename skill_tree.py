@@ -74,7 +74,7 @@ class SkillTree:
             lvl = skill_node["level"]
             if lvl <= 0: continue
             
-            if skill_node["id"] == "health": player.max_health += (player.max_health * 0.1) * lvl
+            if skill_node["id"] == "health": player.max_health += min(500, (player.max_health * 0.1) * lvl)
             elif skill_node["id"] == "armor": player.armor = getattr(player, 'armor', 0) + lvl
             elif skill_node["id"] == "thorns": player.thorns = getattr(player, 'thorns', 0) + lvl
             elif skill_node["id"] == "regen": player.regen = getattr(player, 'regen', 0) + (0.01 * lvl)
@@ -114,6 +114,10 @@ class SkillTree:
 
                 # --- IMMEDIATE PLAYER UPDATES ---
                 if skill_node["id"] == "health":
+                    if player.max_health >= 500:
+                        # Atceļam pirkumu, jo limits sasniegts
+                        skill_node["level"] -= 1 # Atgriežam līmeni atpakaļ, jo tas tika palielināts pirms if
+                        return None
                     player.max_health += player.max_health * 0.1
                     player.health += player.max_health * 0.1
 

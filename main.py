@@ -149,10 +149,19 @@ def apply_boss_drop(player, wave):
 
 
     elif drop_type == "health":
-        health_boost = int(5 + (wave * 0.05)) # Neliels veselības pieaugums, kas palielinās ar katru viļņu komplektu
-        player.max_health += health_boost
-        player.health += health_boost
-        trigger_boss_drop_anim(f"HEALTH BOOST! +{health_boost}")
+        if player.max_health >= 500:
+            player.money += 100
+            trigger_boss_drop_anim("HEALTH MAXED! +$100")
+            return "money"
+        bonus = round(wave * 0.1, 1)
+        old_mh = player.max_health
+        player.max_health = round(min(500, player.max_health + bonus), 1)
+        player.health = round(min(500, player.health + bonus), 1)
+        actual_gain = round(player.health - old_mh, 1)
+        if actual_gain > 0:
+                trigger_boss_drop_anim(f"HEALTH BOOST! +{actual_gain}")
+
+
 
     elif drop_type == "armor":
         armor_boost = 1 + (wave // 8) 
