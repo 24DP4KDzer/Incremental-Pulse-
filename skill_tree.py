@@ -88,7 +88,7 @@ class SkillTree:
             elif skill_node["id"] == "stamina": player.max_energy += 5 * lvl
             elif skill_node["id"] == "crit": player.crit_chance = getattr(player, 'crit_chance', 0) + (5 * lvl)
             elif skill_node["id"] == "lifesteal": player.lifesteal = min(30, player.lifesteal + lvl)
-            elif skill_node["id"] == "firerate": player.base_cooldown = min(5, player.base_cooldown - (0.1 * lvl))
+            elif skill_node["id"] == "firerate": player.base_cooldown = max(8, player.base_cooldown - (0.04 * lvl))
 
             if skill_node["currency"] == "gold":
                 skill_node["cost"] = int(skill_node["base_cost"] * (1.5 ** lvl))

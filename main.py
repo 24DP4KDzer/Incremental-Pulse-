@@ -167,9 +167,16 @@ def apply_boss_drop(player, wave):
     drop_type = random.choice(["damage", "speed", "health", "armor", "lifesteal"])
     
     if drop_type == "damage":
+        if player.damage >= 100:
+            player.money += 100
+            trigger_boss_drop_anim("DAMAGE MAXED! +$100")
+            return "money"
         bonus = int(1 + (wave * 0.2))
-        player.damage += bonus
-        trigger_boss_drop_anim(f"DAMAGE BOOST! +{bonus}")
+        old_dmg = player.damage
+        player.damage = min(100, player.damage + bonus)
+        actual_gain = int(player.damage - old_dmg)
+        if actual_gain > 0:
+            trigger_boss_drop_anim(f"DAMAGE BOOST! +{actual_gain}")
     elif drop_type == "speed":
         if player.speed >= 22:
             player.money += 100 # Iedodam moneeey bonusu, ja ātrums jau ir maxed out
@@ -205,9 +212,17 @@ def apply_boss_drop(player, wave):
 
 
     elif drop_type == "armor":
-        armor_boost = 1 + (wave // 8) 
-        player.armor = getattr(player, 'armor', 0) + armor_boost
-        trigger_boss_drop_anim(f"ARMOR BOOST! +{armor_boost}")
+        armor_boost = 1 + (wave // 8)
+        max_armor = 150
+        if player.armor >= max_armor:
+            player.money += 100
+            trigger_boss_drop_anim("ARMOR MAXED! +$100")
+            return "money"
+        old_armor = player.armor
+        player.armor = min(max_armor, player.armor + armor_boost)
+        actual_gain = int(player.armor - old_armor)
+        if actual_gain > 0:
+            trigger_boss_drop_anim(f"ARMOR BOOST! +{actual_gain}")
 
     elif drop_type == "lifesteal":
         if player.lifesteal >= 30:
@@ -723,7 +738,7 @@ def get_dist_to_rect(point, rect):
 
 player = Player()
 
-bosses, enemies, projectiles, coins, chests, active_swings, special_coins, hp_drops = [], [], [], [], [], [], [], []
+bosses, enemies, projectiles, coins, chests, active_swings, special_coins, hp_drops, orphaned_fireballs = [], [], [], [], [], [], [], [], []
 boss_energy, boss_goal, max_enemies = 0, 100, 4
 time_freeze_timer = 0
 nuke_flash_timer = 0
@@ -911,7 +926,7 @@ while True:
                         if is_new_account:
                             save_game_csv(user_name, sel, player, skills, user_password)
                         load_game_csv(user_name, sel, player, skills)
-                        enemies.clear(); bosses.clear(); projectiles.clear(); coins.clear(); chests.clear(); active_swings.clear()
+                        enemies.clear(); bosses.clear(); projectiles.clear(); coins.clear(); chests.clear(); active_swings.clear(); orphaned_fireballs.clear()
                         current_wave, max_enemies, time_freeze_timer = 1, 4, 0
                         for _ in range(max_enemies): spawn_enemy()
                         game_state = "playing"
@@ -938,6 +953,7 @@ while True:
                     enemies.clear()
                     bosses.clear()
                     projectiles.clear()
+                    orphaned_fireballs.clear()
                     current_wave, max_enemies = 1, 4
                     game_state = "playing"
                     
@@ -1216,12 +1232,28 @@ while True:
             b.draw(screen)
             if b.health <= 0:
                 apply_boss_drop(player, current_wave)
+                # ugunsbumbas orphaned_fireballs, lai tās neizzustu!
+                orphaned_fireballs.extend(b.fireballs)
                 bosses.remove(b); player.money += 50; player.skill_points += 1; trigger_save_anim("+1 SP!")
 
         if boss_energy >= boss_goal:
             # beigās 'current_wave', lai boss zinātu, cik stipram viņam jābūt!
             bosses.append(Boss(screen_w, screen_h, current_wave))
             boss_energy = 0
+
+        # Atjaunina un uzzīmē orphaned fireballs (uz bosiem, kas ir pabeigti/nomiruši)
+        for fb in orphaned_fireballs[:]:
+            if time_freeze_timer <= 0:
+                fb.update(dilation)
+            # Pārbauda, vai trāpīja spēlētājam
+            if fb.rect.colliderect(player.rect):
+                player.health -= max(1, 70 - getattr(player, 'armor', 0))
+                orphaned_fireballs.remove(fb)
+            # Iznīcina ugunsbumbu, ja tā aizlido no ekrāna
+            elif fb.pos.x < -100 or fb.pos.x > screen_w + 100 or fb.pos.y < -100 or fb.pos.y > screen_h + 100:
+                orphaned_fireballs.remove(fb)
+            else:
+                fb.draw(screen)
 
         player.draw(screen)
 

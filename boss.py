@@ -4,16 +4,19 @@ import random
 
 # --- BOSA UGUNSBUMBAS KLASE ---
 class BossFireball:
-    # funkcija __init__ pieņem int tipa vērtību x, int tipa vērtību y, int tipa vērtību target_x, int tipa vērtību target_y un atgriež None tipa vērtību None
-    def __init__(self, x, y, target_x, target_y):
+    # funkcija __init__ pieņem int tipa vērtību x, int tipa vērtību y, int tipa vērtību target_x, int tipa vērtību target_y, float tipa vērtību boss_speed un atgriež None tipa vērtību None
+    def __init__(self, x, y, target_x, target_y, boss_speed=1.2):
         self.pos = pygame.math.Vector2(x, y)
         direction = pygame.math.Vector2(target_x - x, target_y - y)
         
         # Normalizējam vektoru, lai ugunsbumba lidotu vienmērīgā ātrumā
         if direction.length() > 0:
             direction.normalize_ip()
-            
-        self.vel = direction * 4.5  # Ugunsbumbas lidošanas ātrums
+        
+        # Ugunsbumbas ātrums skalējas ar bosa ātrumu, bet ne lineāri
+        # Base speed 3.0 + boss_speed scaling
+        projectile_speed = 3.0 + boss_speed * 0.5
+        self.vel = direction * projectile_speed
         self.radius = 12
         self.rect = pygame.Rect(x - self.radius, y - self.radius, self.radius * 2, self.radius * 2)
         
@@ -90,8 +93,8 @@ class Boss:
         
         self.shoot_timer -= 1 * dilation
         if self.shoot_timer <= 0:
-            # Izšauj ugunsbumbu spēlētāja virzienā!
-            self.fireballs.append(BossFireball(self.rect.centerx, self.rect.centery, player_rect.centerx, player_rect.centery))
+            # Izšauj ugunsbumbu spēlētāja virzienā, padodot bosa ātrumu!
+            self.fireballs.append(BossFireball(self.rect.centerx, self.rect.centery, player_rect.centerx, player_rect.centery, self.speed))
             # Atiestata taimeri (viļņos ar augstu numuru šaus ļoti bieži)
             self.shoot_timer = max(50, 150 - (self.wave * 10))
 
