@@ -70,8 +70,15 @@ except Exception:
 
 screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
 screen_w, screen_h = screen.get_size()
-pygame.display.set_caption("Pulse: Evolution")
+
 clock = pygame.time.Clock()
+try:
+    icon_path = get_path("photos/icon.png") # Pārliecinies, ka fails eksistē šajā mapē
+    game_icon = pygame.image.load(icon_path)
+    pygame.display.set_icon(game_icon)
+    pygame.display.set_caption("Pulse: Evolution") # Spēles nosaukums
+except Exception as e:
+    print(f"Ikonu neizdevās ielādēt: {e}")
 
 # 2. SAGLABĀŠANAS/IELĀDES SISTĒMA
 PLAYER_FILE = "data/players.csv"
