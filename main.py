@@ -688,9 +688,10 @@ def save_game_csv(name, char_type, p, s_tree, password=""):
     if not found_p:
         p_rows.append(new_p_data)
 
-    # Visbeidzot ierakstām atpakaļ visu sarakstu failā ar jaunajiem datiem.
+# Visbeidzot ierakstām atpakaļ visu sarakstu failā ar jaunajiem datiem.
     with open(PLAYER_FILE, 'w', newline='') as f:
-        writer = csv.DictWriter(f, fieldnames=list(new_p_data.keys()))
+        # Pievienots extrasaction='ignore', lai ignorētu vecos, neeksistējošos statusefektus
+        writer = csv.DictWriter(f, fieldnames=list(new_p_data.keys()), extrasaction='ignore')
         writer.writeheader()
         writer.writerows(p_rows)
 
