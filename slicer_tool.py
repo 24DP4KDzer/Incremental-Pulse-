@@ -1,58 +1,104 @@
 import pygame
 import sys
+import os
 
 pygame.init()
 
-# 1. Load the image
-# Make sure this matches your exact file path!
-image_path = "photos/allOfDwarf.png"
+# --- KONFIGURĀCIJA ---
+IMAGE_PATH = "photos/allOfBoss.png"
+SCALE = 0.15  # Samazinām, lai ietilpst ekrānā, ja bilde ir milzīga
+
+# 1. VISPIRMS IZVEIDOJAM LOGU
+screen = pygame.display.set_mode((1100, 800))
+pygame.display.set_caption("Boss Sprite Slicer (2x2 Mode)")
+
+# 2. TAD IELĀDĒJAM BILDI
 try:
-    sheet = pygame.image.load(image_path)
-except:
-    print(f"Could not load {image_path}! Check your spelling.")
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    full_path = os.path.join(current_dir, IMAGE_PATH)
+    original_sheet = pygame.image.load(full_path).convert_alpha()
+    w, h = original_sheet.get_size()
+    sheet = pygame.transform.scale(original_sheet, (int(w * SCALE), int(h * SCALE)))
+except Exception as e:
+    print(f"Kļūda: {e}")
+    pygame.quit()
     sys.exit()
 
-# Get image size and create a window
-img_w, img_h = sheet.get_size()
+# --- MAINĪGIE (Sākuma vērtības) ---
+# Tā kā tev ir 4 kadri (2 rindiņas, 2 kolonnas), šie skaitļi palīdzēs atrast centru
+f_w = sheet.get_width() // 2
+f_h = sheet.get_height() // 2
+s_x, s_y = 0, 0  # Nobīde no malas
+p_x, p_y = 0, 0  # Atstarpe starp kadriem (padding)
 
-scale = 0.5
-new_w = int(img_w * scale)
-new_h = int(img_h * scale)
+font = pygame.font.SysFont("Arial", 18)
+clock = pygame.time.Clock()
 
-sheet = pygame.transform.scale(sheet, (new_w, new_h))
-screen = pygame.display.set_mode((new_w, new_h))
-
-pygame.display.set_caption("Sprite Slicer Tool")
-# ==========================================
-# 2. TWEAK THESE NUMBERS UNTIL THE RED BOXES FIT!
-# ==========================================
-frame_w = 200    # Width of the box
-frame_h = 276       # Height of the box
-start_x = 0     # Distance from left edge to the first box
-start_y = 0   # Distance from top edge to the first box
-padding_x = 300     # Empty space between columns
-padding_y = 50    # Empty space between rows
-num_frames = 2     # Number of columns
-# ==========================================
+def draw_text(text, pos, color=(255, 255, 255)):
+    screen.blit(font.render(text, True, color), pos)
 
 while True:
+    screen.fill((30, 30, 30))
+    screen.blit(sheet, (0, 0))
+
+    keys = pygame.key.get_pressed()
+    step = 5 if keys[pygame.K_LSHIFT] else 1
+
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit()
             sys.exit()
+        
+        if event.type == pygame.KEYDOWN:
+            # Platums/Augstums
+            if event.key == pygame.K_w: f_w += step
+            if event.key == pygame.K_s: f_w -= step
+            if event.key == pygame.K_e: f_h += step
+            if event.key == pygame.K_d: f_h -= step
+            # Atstarpes
+            if event.key == pygame.K_r: p_x += step
+            if event.key == pygame.K_f: p_x -= step
+            if event.key == pygame.K_t: p_y += step
+            if event.key == pygame.K_g: p_y -= step
+            # Pozīcija
+            if event.key == pygame.K_UP:    s_y -= step
+            if event.key == pygame.K_DOWN:  s_y += step
+            if event.key == pygame.K_LEFT:  s_x -= step
+            if event.key == pygame.K_RIGHT: s_x += step
 
-    # Draw background and image
-    screen.fill((30, 30, 30))
-    screen.blit(sheet, (0, 0))
+    # Definējam tavas 4 pozīcijas (Top Left, Top Right, Bottom Left, Bottom Right)
+    # Atbilstoši tavam aprakstam:
+    positions = [
+        (0, 0, "LEFT (Top-L)"),      # Col 0, Row 0
+        (1, 0, "DOWN (Top-R)"),      # Col 1, Row 0
+        (0, 1, "RIGHT (Bot-L)"),     # Col 0, Row 1
+        (1, 1, "UP (Bot-R)")         # Col 1, Row 1
+    ]
 
-    # Draw the red bounding boxes
-    for row in range(4): # 4 rows (Up, Down, Left, Right)
-        for col in range(num_frames):
-            exact_x = start_x + (col * frame_w) + (col * padding_x)
-            exact_y = start_y + (row * frame_h) + (row * padding_y)
-            
-            rect = pygame.Rect(exact_x, exact_y, frame_w, frame_h)
-            # Draw a 2-pixel thick red box
-            pygame.draw.rect(screen, (255, 0, 0), rect, 2) 
+    for col, row, label in positions:
+        x = s_x + (col * f_w) + (col * p_x)
+        y = s_y + (row * f_h) + (row * p_y)
+        
+        rect = pygame.Rect(x, y, f_w, f_h)
+        pygame.draw.rect(screen, (255, 0, 0), rect, 2)
+        draw_text(label, (x + 5, y + 5), (255, 255, 0))
+
+    # INFO PANELIS
+    panel_x = sheet.get_width() + 20
+    draw_text("VADĪBA:", (panel_x, 20), (0, 255, 255))
+    draw_text(f"Bultiņas: Pozīcija ({s_x}, {s_y})", (panel_x, 50))
+    draw_text(f"W/S: Platums ({f_w})", (panel_x, 5))
+    draw_text(f"E/D: Augstums ({f_h})", (panel_x, 100))
+    draw_text(f"R/F: Atstarpe X ({p_x})", (panel_x, 125))
+    draw_text(f"T/G: Atstarpe Y ({p_y})", (panel_x, 150))
+    
+    draw_text("KODAM (reizini ar 2, ja SCALE=0.5):", (panel_x, 250), (0, 255, 0))
+    # Ja tu izmanto SCALE 0.5, tad īstajā kodā skaitļi jādubulto
+    mult = 1 / SCALE
+    draw_text(f"frame_w = {int(f_w * mult)}", (panel_x, 280))
+    draw_text(f"frame_h = {int(f_h * mult)}", (panel_x, 305))
+    draw_text(f"pad_x = {int(p_x * mult)}", (panel_x, 330))
+    draw_text(f"pad_y = {int(p_y * mult)}", (panel_x, 355))
 
     pygame.display.flip()
+    clock.tick(60)

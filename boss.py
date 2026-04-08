@@ -125,7 +125,3 @@ class Boss:
             bar_y = self.rect.y - 20
             pygame.draw.rect(screen, (200, 0, 0), (bar_x, bar_y, bar_width, 10))
             pygame.draw.rect(screen, (0, 255, 0), (bar_x, bar_y, bar_width * health_ratio, 10))
-
-
-
-

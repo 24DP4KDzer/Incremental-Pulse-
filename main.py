@@ -32,13 +32,41 @@ def get_path(relative_path):
 
 # 1. INICIALIZĀCIJA
 pygame.init()
+
+MUSIC_END_EVENT = pygame.USEREVENT + 1
+bg_music_files = []
+current_music_index = 0
+master_volume = 100
+music_volume = 100
+sfx_volume = 100
+
+def get_background_music_files():
+    audio_dir = get_path("audio")
+    if not os.path.isdir(audio_dir):
+        return []
+    return sorted([
+        os.path.join(audio_dir, f)
+        for f in os.listdir(audio_dir)
+        if f.lower().endswith((".mp3", ".wav", ".ogg", ".flac", ".mid", ".midi"))
+    ])
+
+
+def play_current_bg_music():
+    if not bg_music_files:
+        return
+    pygame.mixer.music.load(bg_music_files[current_music_index])
+    pygame.mixer.music.set_volume((master_volume / 100) * (music_volume / 100))
+    pygame.mixer.music.play(0)
+
 try:
     pygame.mixer.init()
-    pygame.mixer.music.load(get_path("audio/bg_audio.mp3"))
-    pygame.mixer.music.set_volume(0.5)
-    pygame.mixer.music.play(-1)
+    bg_music_files = get_background_music_files()
+    if bg_music_files:
+        pygame.mixer.music.set_endevent(MUSIC_END_EVENT)
+        play_current_bg_music()
 except Exception:
     pass
+
 screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
 screen_w, screen_h = screen.get_size()
 pygame.display.set_caption("Pulse: Evolution")
@@ -259,6 +287,7 @@ wizard_ui = load_sprite(get_path("photos/wizard_right.png"))
 shadow_ui = load_sprite(get_path("photos/Shadow_up.png"))
 dwarf_ui  = load_sprite(get_path("photos/dwarf_forward.png"))
 
+
 freeze_surf = pygame.Surface((screen_w, screen_h), pygame.SRCALPHA)
 freeze_surf.fill((0, 150, 255, 40))
 
@@ -283,7 +312,7 @@ class MeleeSwing:
             base_spin_speed = 5  # Start slow
             # Calculate speed increase based on how much faster than base cooldown we are
             cooldown_reduction = max(0, 25 - owner.base_cooldown)  # 25 is base cooldown
-            speed_multiplier = 1 + (cooldown_reduction * 0.3)  # More significant speed increase
+            speed_multiplier = (cooldown_reduction * 0.1)  # More significant speed increase
             self.spin_speed = base_spin_speed * speed_multiplier
             # Dwarf axes spin continuously, so longer lifetime
             self.lifetime = 600  # Much longer lifetime for continuous spinning
@@ -310,9 +339,11 @@ class MeleeSwing:
                 axe_x = self.owner.rect.centerx + math.cos(rad) * self.radius
                 axe_y = self.owner.rect.centery + math.sin(rad) * self.radius
                 
-                # Line from player center to axe
+                # End the line at the axe tip instead of at the axe center
+                axe_tip_offset = 35
                 line_start = (self.owner.rect.centerx, self.owner.rect.centery)
-                line_end = (axe_x, axe_y)
+                line_end = (axe_x + math.cos(rad) * axe_tip_offset,
+                            axe_y + math.sin(rad) * axe_tip_offset)
                 
                 # Check each enemy for collision with this damage line
                 for e in self.enemies:
@@ -425,11 +456,13 @@ class MeleeSwing:
                 axe_x = self.owner.rect.centerx + math.cos(rad) * self.radius
                 axe_y = self.owner.rect.centery + math.sin(rad) * self.radius
                 
-                # Draw damage line from player to axe (semi-transparent)
+                # Draw damage line from player to the tip of the axe (semi-transparent)
+                axe_tip_offset = 35
                 line_surface = pygame.Surface((surface.get_width(), surface.get_height()), pygame.SRCALPHA)
                 pygame.draw.line(line_surface, (255, 100, 100, 150), 
                                (self.owner.rect.centerx, self.owner.rect.centery), 
-                               (axe_x, axe_y), 3)
+                               (axe_x + math.cos(rad) * axe_tip_offset,
+                                axe_y + math.sin(rad) * axe_tip_offset), 3)
                 surface.blit(line_surface, (0, 0))
                 
                 # Create axe surface
@@ -595,8 +628,18 @@ def load_game_csv(name, char_type, p, s_tree):
                 if row["name"] == name and row["char_type"] == char_type:
                     # Iekšējās palīgfunkcijas drošai datu konvertēšanai no teksta uz cipariem.
                     # Ja šūna ir tukša vai nederīga, tiek atgriezta noklusējuma vērtība 'd'.
-                    def s_i(k, d): return int(row[k]) if k in row and row[k].strip() else d
-                    def s_f(k, d): return float(row[k]) if k in row and row[k].strip() else d
+                    # Izmantojam float() pirms int(), lai apstrādātu decimālskaitļus tekstā
+                    def s_i(k, d): 
+                        try:
+                            return int(float(row[k])) if k in row and row[k].strip() else d
+                        except (ValueError, TypeError):
+                            return d
+
+                    def s_f(k, d): 
+                        try:
+                            return float(row[k]) if k in row and row[k].strip() else d
+                        except (ValueError, TypeError):
+                            return d
 
                     p.money = s_i("money", 0)
                     p.max_health = s_f("max_health", 100.0)
@@ -763,8 +806,13 @@ while True:
                 start_transition("fade")
                 game_state = "playing"
 
+        elif MUSIC_END_EVENT is not None and event.type == MUSIC_END_EVENT:
+            if bg_music_files:
+                current_music_index = (current_music_index + 1) % len(bg_music_files)
+                play_current_bg_music()
+
         if event.type == pygame.MOUSEBUTTONDOWN:
-            print(f"Pašreizējais stāvoklis: {game_state}")
+            print(f"Pašreizējais stāvokl: {game_state}")
             if show_settings:
                 if back_btn.collidepoint(event.pos):
                     show_settings = False # Aizver iestatījumus
