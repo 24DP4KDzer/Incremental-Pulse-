@@ -287,6 +287,13 @@ wizard_ui = load_sprite(get_path("photos/wizard_right.png"))
 shadow_ui = load_sprite(get_path("photos/Shadow_up.png"))
 dwarf_ui  = load_sprite(get_path("photos/dwarf_forward.png"))
 
+# Load chain image for dwarf damage lines (fallback to red line if not found)
+_chain_img_path = get_path("photos/chain.png")
+if os.path.exists(_chain_img_path):
+    chain_img_original = pygame.image.load(_chain_img_path).convert_alpha()
+else:
+    chain_img_original = None
+
 
 freeze_surf = pygame.Surface((screen_w, screen_h), pygame.SRCALPHA)
 freeze_surf.fill((0, 150, 255, 40))
@@ -446,7 +453,7 @@ class MeleeSwing:
     # funkcija draw pieņem MeleeSwing tipa vērtību self un pygame.Surface tipa vērtību surface un atgriež None tipa vērtību None
     def draw(self, surface):
         if self.is_dwarf:
-            # Draw damage lines and spinning axes for dwarf
+            # Draw chain/line and spinning axes for dwarf
             for i in range(self.num_axes):
                 # Calculate angle for each axe (evenly distributed)
                 axe_angle = self.angle + (360 / self.num_axes) * i
@@ -456,16 +463,30 @@ class MeleeSwing:
                 axe_x = self.owner.rect.centerx + math.cos(rad) * self.radius
                 axe_y = self.owner.rect.centery + math.sin(rad) * self.radius
                 
-                # Draw damage line from player to the tip of the axe (semi-transparent)
                 axe_tip_offset = 35
-                line_surface = pygame.Surface((surface.get_width(), surface.get_height()), pygame.SRCALPHA)
-                pygame.draw.line(line_surface, (255, 100, 100, 150), 
-                               (self.owner.rect.centerx, self.owner.rect.centery), 
-                               (axe_x + math.cos(rad) * axe_tip_offset,
-                                axe_y + math.sin(rad) * axe_tip_offset), 3)
-                surface.blit(line_surface, (0, 0))
+                tip_x = axe_x + math.cos(rad) * axe_tip_offset
+                tip_y = axe_y + math.sin(rad) * axe_tip_offset
                 
-                # Create axe surface
+                # Draw chain PNG or fallback red line (NO full-screen surface!)
+                if chain_img_original is not None:
+                    # Scale and rotate chain image to connect player center to axe tip
+                    cx, cy = self.owner.rect.centerx, self.owner.rect.centery
+                    chain_len = math.hypot(tip_x - cx, tip_y - cy)
+                    if chain_len > 0:
+                        chain_angle_deg = -math.degrees(math.atan2(tip_y - cy, tip_x - cx))
+                        scaled_chain = pygame.transform.scale(chain_img_original, (int(chain_len), max(1, chain_img_original.get_height())))
+                        rotated_chain = pygame.transform.rotate(scaled_chain, chain_angle_deg)
+                        mid_x = (cx + tip_x) / 2
+                        mid_y = (cy + tip_y) / 2
+                        chain_rect = rotated_chain.get_rect(center=(mid_x, mid_y))
+                        surface.blit(rotated_chain, chain_rect)
+                else:
+                    # Fallback: draw line directly on the surface (no alpha surface needed)
+                    pygame.draw.line(surface, (255, 100, 100), 
+                                   (self.owner.rect.centerx, self.owner.rect.centery), 
+                                   (int(tip_x), int(tip_y)), 3)
+                
+                # Create axe surface (pre-allocate once would be better, but small)
                 axe_surface = pygame.Surface((70, 35), pygame.SRCALPHA)
                 pygame.draw.rect(axe_surface, (100, 50, 0), (0, 12, 50, 10))
                 pygame.draw.rect(axe_surface, (200, 200, 200), (45, 0, 25, 35))
@@ -1199,30 +1220,21 @@ while True:
         # [SAREŽĢĪTA LOĢIKA]: TUMSAS SISTĒMA (Apgaismojuma renderēšana)
         # Šis kods pārklāj ekrānu ar tumšu slāni, bet ap spēlētāju izgriež "caurumu", lai radītu gaismas efektu.
         shroud.fill((5, 5, 15, 180))
-        pulse = int(6 * math.sin(flicker_val))
-        light_radius = max(10, int(player.attack_radius * 1.4) + pulse)
+        # Snap to nearest 10px so cache stays tiny (avoids new surface every frame from pulse)
+        light_radius = max(10, round(int(player.attack_radius * 1.4) / 10) * 10)
         
-        # [SAREŽĢĪTA LOĢIKA]: Gaismas kešatmiņa (Glow Cache)
-        # Ja mēs katru kadru zīmējam 200+ lielus apļus, spēle sāk ļoti bremzēt, kad uzbrukuma rādiuss ir liels.
-        # Tāpēc mēs izmantojam vārdnīcu 'glow_cache', lai saglabātu uzzīmētos gaismas apļus.
         if not hasattr(player, 'glow_cache'):
             player.glow_cache = {}
             
-        # Pārbaudām, vai šāda izmēra gaisma jau ir uzzīmēta iepriekš
         if light_radius not in player.glow_cache:
             t_surf = pygame.Surface((light_radius * 2, light_radius * 2), pygame.SRCALPHA)
             core_radius = max(1, light_radius // 2)
             pygame.draw.circle(t_surf, (0, 0, 0, 255), (light_radius, light_radius), core_radius)
-            
-            # Solis -3 nozīmē, ka mēs zīmējam 3x mazāk apļu (ietaupot resursus), saglabājot to pašu izskatu!
             for r in range(light_radius, core_radius, -3):
                 alpha = max(0, min(255, int(255 * (1 - (r - core_radius) / max(1, light_radius - core_radius)))))
                 pygame.draw.circle(t_surf, (0, 0, 0, alpha), (light_radius, light_radius), r)
-                
-            # Saglabājam gatavo bildi atmiņā
             player.glow_cache[light_radius] = t_surf
             
-        # Paņemam gatavo gaismu no atmiņas (Tas neprasa nekādu skaitļošanas jaudu!)
         t_surf = player.glow_cache[light_radius]
         
         shroud.blit(t_surf, t_surf.get_rect(center=player.rect.center), special_flags=pygame.BLEND_RGBA_SUB)

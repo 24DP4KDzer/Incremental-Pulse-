@@ -54,13 +54,15 @@ class Boss:
         self.shoot_timer = max(50, 150 - (self.wave * 10)) 
 
         try:
-            # Ielādējam un uzreiz mērogojam uz hitbox izmēru!
             self.original_image = pygame.image.load("photos/allOfBoss.png").convert_alpha()
-            # Šeit mēs norādām 250x250, lai bilde precīzi iekļautos baltajā kvadrātā
-            self.image = pygame.transform.scale(self.original_image, (350, 350))
+            self.image_right = pygame.transform.scale(self.original_image, (350, 350))
+            self.image_left = pygame.transform.flip(self.image_right, True, False)
+            self.image = self.image_right
         except:
-            self.image = pygame.Surface((350, 350), pygame.SRCALPHA)
-            pygame.draw.rect(self.image, (200, 0, 0), (0, 0, 350, 350))
+            self.image_right = pygame.Surface((350, 350), pygame.SRCALPHA)
+            pygame.draw.rect(self.image_right, (200, 0, 0), (0, 0, 350, 350))
+            self.image_left = self.image_right
+            self.image = self.image_right
 
     # funkcija update pieņem pygame.Rect tipa vērtību player_rect, float tipa vērtību dilation un atgriež int tipa vērtību damage_dealt_to_player
     def update(self, player_rect, dilation):
@@ -75,12 +77,12 @@ class Boss:
             self.rect.y += (dy / dist) * self.speed * dilation
 
         # Bosa attēla spoguļošana
-        if hasattr(self, 'original_image'):
+        if hasattr(self, 'image_right'):
             if dx < 0 and self.direction != "left":
-                self.image = pygame.transform.flip(pygame.transform.scale(self.original_image, (350, 350)), True, False)
+                self.image = self.image_left
                 self.direction = "left"
             elif dx > 0 and self.direction != "right":
-                self.image = pygame.transform.scale(self.original_image, (350, 350))
+                self.image = self.image_right
                 self.direction = "right"
 
         # 2. [SAREŽĢĪTA LOĢIKA]: Ugunsbumbu šaušana
