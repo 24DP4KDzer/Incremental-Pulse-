@@ -20,16 +20,38 @@ os.chdir(SCRIPT_DIR)  # Mainīt darba direktoriju uz skripta vietu
 
 # funkcija get_path pieņem str tipa vērtību relative_path un atgriež str tipa vērtību full_path
 def get_path(relative_path):
-    """ Atrod ceļu uz resursiem, strādā gan skriptā, gan .exe """
+    """ 
+    LIETOŠANA: Attēliem, skaņām, sākuma datiem.
+    Atrod failus, kas ir iepakoti .exe failā (lasīšanai).
+    """
     if getattr(sys, 'frozen', False):
-        # Ja palaists kā .exe, izmanto PyInstaller pagaidu mapi
+        # Ja palaists kā .exe, skatās pagaidu mapē (_MEIPASS)
         base_path = sys._MEIPASS
     else:
-        # Ja palaists kā skripts, izmanto pašreizējo mapi
+        # Ja palaists kā skripts, skatās tur, kur ir main.py
         base_path = os.path.dirname(os.path.abspath(__file__))
     
-    final_path = os.path.join(base_path, relative_path)
-    return final_path
+    return os.path.join(base_path, relative_path)
+
+def get_save_path(relative_path):
+    """ 
+    LIETOŠANA: Progresa saglabāšanai, CSV failu rakstīšanai.
+    Atrod ceļu blakus tavam .exe failam, lai dati nepazustu.
+    """
+    if getattr(sys, 'frozen', False):
+        # Atrod mapi, kurā fiziski atrodas .exe fails
+        base_path = os.path.dirname(sys.executable)
+    else:
+        # Atrod mapi, kurā ir tavs main.py
+        base_path = os.path.dirname(os.path.abspath(__file__))
+    
+    # Izveido mapi, ja tā neeksistē (piemēram, "data" mapi)
+    full_path = os.path.join(base_path, relative_path)
+    directory = os.path.dirname(full_path)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+        
+    return full_path
 
 # 1. INICIALIZĀCIJA
 pygame.init()
@@ -168,15 +190,21 @@ def apply_boss_drop(player, wave):
     
     if drop_type == "damage":
         if player.damage >= 100:
-            player.money += 100
+            player.money += 100 # Iedodam moneeey bonusu, ja damage jau ir maxed out
             trigger_boss_drop_anim("DAMAGE MAXED! +$100")
             return "money"
-        bonus = int(1 + (wave * 0.2))
-        old_dmg = player.damage
-        player.damage = min(100, player.damage + bonus)
-        actual_gain = int(player.damage - old_dmg)
-        if actual_gain > 0:
+        else:
+            bonus = int(1 + (wave * 0.2))
+            old_dmg = player.damage
+            player.damage = min(100, player.damage + bonus)
+            actual_gain = player.damage - old_dmg
+ 
             trigger_boss_drop_anim(f"DAMAGE BOOST! +{actual_gain}")
+
+
+
+
+
     elif drop_type == "speed":
         if player.speed >= 22:
             player.money += 100 # Iedodam moneeey bonusu, ja ātrums jau ir maxed out
@@ -212,20 +240,12 @@ def apply_boss_drop(player, wave):
 
 
     elif drop_type == "armor":
-        armor_boost = 1 + (wave // 8)
-        max_armor = 150
-        if player.armor >= max_armor:
-            player.money += 100
-            trigger_boss_drop_anim("ARMOR MAXED! +$100")
-            return "money"
-        old_armor = player.armor
-        player.armor = min(max_armor, player.armor + armor_boost)
-        actual_gain = int(player.armor - old_armor)
-        if actual_gain > 0:
-            trigger_boss_drop_anim(f"ARMOR BOOST! +{actual_gain}")
+        armor_boost = 1 + (wave // 8) 
+        player.armor = getattr(player, 'armor', 0) + armor_boost
+        trigger_boss_drop_anim(f"ARMOR BOOST! +{armor_boost}")
 
     elif drop_type == "lifesteal":
-        if player.lifesteal >= 30:
+        if player.lifesteal >= 15:
             player.money += 100 # Iedodam moneeey bonusu, ja lifesteal jau ir maxed out
             trigger_boss_drop_anim("LIFESTEAL MAXED! +$100")
             return "money"
@@ -236,8 +256,8 @@ def apply_boss_drop(player, wave):
             # Saglabājam veco vērtību, lai zinātu, cik reāli pieskaitījām
             old_ls = player.lifesteal
             
-            # Pieskaitām, bet ierobežojam uz 30 un noapaļojam
-            player.lifesteal = round(min(30, player.lifesteal + bonus), 1)
+            # Pieskaitām, bet ierobežojam uz 15 un noapaļojam
+            player.lifesteal = round(min(15, player.lifesteal + bonus), 1)
             
             # Aprēķinām faktisko ieguvumu vizuālajai animācijai
             actual_gain = round(player.lifesteal - old_ls, 1)
@@ -314,8 +334,17 @@ dwarf_ui  = load_sprite(get_path("photos/dwarf_forward.png"))
 _chain_img_path = get_path("photos/chain.png")
 if os.path.exists(_chain_img_path):
     chain_img_original = pygame.image.load(_chain_img_path).convert_alpha()
+    chain_img_original= pygame.transform.scale(chain_img_original,(90, 10))
 else:
     chain_img_original = None
+
+# Load axe image for dwarf axes (fallback to drawn rectangles if not found)
+_axe_img_path = get_path("photos/axe.png")
+if os.path.exists(_axe_img_path):
+    axe_img_original = pygame.image.load(_axe_img_path).convert_alpha()
+    axe_img_original = pygame.transform.scale(axe_img_original, (70, 35))
+else:
+    axe_img_original = None
 
 
 freeze_surf = pygame.Surface((screen_w, screen_h), pygame.SRCALPHA)
@@ -338,11 +367,10 @@ class MeleeSwing:
         if self.is_dwarf:
             # Dwarf has spinning axes - get number of axes from multi skill
             self.num_axes = getattr(owner, 'projectile_count', 1)
-            # Base spin speed is slow, increases with attack speed upgrades
-            base_spin_speed = 5  # Start slow
-            # Calculate speed increase based on how much faster than base cooldown we are
-            cooldown_reduction = max(0, 25 - owner.base_cooldown)  # 25 is base cooldown
-            speed_multiplier = max(1, 1 + cooldown_reduction * 0.1)  # Always at least 1
+            # Base spin speed with gentle scaling: 5% increase per firerate level (max 50% at lvl 10)
+            base_spin_speed = 5
+            firerate_level = getattr(owner, 'firerate_level', 0)
+            speed_multiplier = 1.0 + (firerate_level * 0.05)  # 5% per level
             self.spin_speed = base_spin_speed * speed_multiplier
             # Dwarf axes spin continuously, so longer lifetime
             self.lifetime = 600  # Much longer lifetime for continuous spinning
@@ -509,15 +537,18 @@ class MeleeSwing:
                                    (self.owner.rect.centerx, self.owner.rect.centery), 
                                    (int(tip_x), int(tip_y)), 3)
                 
-                # Create axe surface (pre-allocate once would be better, but small)
-                axe_surface = pygame.Surface((70, 35), pygame.SRCALPHA)
-                pygame.draw.rect(axe_surface, (100, 50, 0), (0, 12, 50, 10))
-                pygame.draw.rect(axe_surface, (200, 200, 200), (45, 0, 25, 35))
-                
-                # Rotate axe
-                rotated_axe = pygame.transform.rotate(axe_surface, -axe_angle)
-                rect = rotated_axe.get_rect(center=(axe_x, axe_y))
-                surface.blit(rotated_axe, rect)
+                # Draw axe using PNG or fallback to drawn rectangles
+                if axe_img_original is not None:
+                    rotated_axe = pygame.transform.rotate(axe_img_original, -axe_angle)
+                    rect = rotated_axe.get_rect(center=(axe_x, axe_y))
+                    surface.blit(rotated_axe, rect)
+                else:
+                    axe_surface = pygame.Surface((70, 35), pygame.SRCALPHA)
+                    pygame.draw.rect(axe_surface, (100, 50, 0), (0, 12, 50, 10))
+                    pygame.draw.rect(axe_surface, (200, 200, 200), (45, 0, 25, 35))
+                    rotated_axe = pygame.transform.rotate(axe_surface, -axe_angle)
+                    rect = rotated_axe.get_rect(center=(axe_x, axe_y))
+                    surface.blit(rotated_axe, rect)
         else:
             # Regular melee swing for other characters
             rotated_axe = pygame.transform.rotate(self.surface, -self.angle)
@@ -738,7 +769,7 @@ def get_dist_to_rect(point, rect):
 
 player = Player()
 
-bosses, enemies, projectiles, coins, chests, active_swings, special_coins, hp_drops, orphaned_fireballs = [], [], [], [], [], [], [], [], []
+bosses, enemies, projectiles, coins, chests, active_swings, special_coins, hp_drops = [], [], [], [], [], [], [], []
 boss_energy, boss_goal, max_enemies = 0, 100, 4
 time_freeze_timer = 0
 nuke_flash_timer = 0
@@ -926,7 +957,7 @@ while True:
                         if is_new_account:
                             save_game_csv(user_name, sel, player, skills, user_password)
                         load_game_csv(user_name, sel, player, skills)
-                        enemies.clear(); bosses.clear(); projectiles.clear(); coins.clear(); chests.clear(); active_swings.clear(); orphaned_fireballs.clear()
+                        enemies.clear(); bosses.clear(); projectiles.clear(); coins.clear(); chests.clear(); active_swings.clear()
                         current_wave, max_enemies, time_freeze_timer = 1, 4, 0
                         for _ in range(max_enemies): spawn_enemy()
                         game_state = "playing"
@@ -953,7 +984,6 @@ while True:
                     enemies.clear()
                     bosses.clear()
                     projectiles.clear()
-                    orphaned_fireballs.clear()
                     current_wave, max_enemies = 1, 4
                     game_state = "playing"
                     
@@ -1232,28 +1262,12 @@ while True:
             b.draw(screen)
             if b.health <= 0:
                 apply_boss_drop(player, current_wave)
-                # ugunsbumbas orphaned_fireballs, lai tās neizzustu!
-                orphaned_fireballs.extend(b.fireballs)
                 bosses.remove(b); player.money += 50; player.skill_points += 1; trigger_save_anim("+1 SP!")
 
         if boss_energy >= boss_goal:
             # beigās 'current_wave', lai boss zinātu, cik stipram viņam jābūt!
             bosses.append(Boss(screen_w, screen_h, current_wave))
             boss_energy = 0
-
-        # Atjaunina un uzzīmē orphaned fireballs (uz bosiem, kas ir pabeigti/nomiruši)
-        for fb in orphaned_fireballs[:]:
-            if time_freeze_timer <= 0:
-                fb.update(dilation)
-            # Pārbauda, vai trāpīja spēlētājam
-            if fb.rect.colliderect(player.rect):
-                player.health -= max(1, 70 - getattr(player, 'armor', 0))
-                orphaned_fireballs.remove(fb)
-            # Iznīcina ugunsbumbu, ja tā aizlido no ekrāna
-            elif fb.pos.x < -100 or fb.pos.x > screen_w + 100 or fb.pos.y < -100 or fb.pos.y > screen_h + 100:
-                orphaned_fireballs.remove(fb)
-            else:
-                fb.draw(screen)
 
         player.draw(screen)
 

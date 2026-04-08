@@ -52,6 +52,26 @@ class SkillTree:
             {"id": "speed", "name": "MOVE SPEED", "pos": (center_x + 160, center_y), "cost": 40, "level": 0, "max": 10, "color": (50, 255, 150), "req": None, "currency": "gold"},
             {"id": "dash", "name": "UNLOCK DASH", "pos": (center_x + 290, center_y), "cost": 2, "level": 0, "max": 1, "color": (255, 0, 150), "req": "speed", "currency": "sp"},
             {"id": "dash_cd", "name": "DASH COOLDOWN", "pos": (center_x + 420, center_y), "cost": 2, "level": 0, "max": 5, "color": (255, 100, 200), "req": "dash", "currency": "sp"},
+
+            # ===== 10 NEW SKILLS =====
+
+            # OFFENSE BRANCH EXTENSIONS
+            {"id": "double_strike", "name": "DOUBLE STRIKE", "pos": (center_x + 240, center_y - 220), "cost": 5, "level": 0, "max": 3, "color": (255, 180, 0), "req": "crit", "currency": "sp"},
+            {"id": "pierce", "name": "PIERCING SHOT", "pos": (center_x - 240, center_y - 330), "cost": 4, "level": 0, "max": 5, "color": (0, 200, 255), "req": "knockback", "currency": "sp"},
+            {"id": "burn", "name": "BURN DAMAGE", "pos": (center_x, center_y - 380), "cost": 6, "level": 0, "max": 5, "color": (255, 80, 0), "req": "lifesteal", "currency": "sp"},
+
+            # DEFENSE BRANCH EXTENSIONS
+            {"id": "shield", "name": "SHIELD BLOCK", "pos": (center_x - 120, center_y + 350), "cost": 5, "level": 0, "max": 5, "color": (0, 180, 255), "req": "regen", "currency": "sp"},
+            {"id": "revive", "name": "SECOND WIND", "pos": (center_x, center_y + 260), "cost": 8, "level": 0, "max": 1, "color": (255, 255, 0), "req": "health", "currency": "sp"},
+            {"id": "dodge", "name": "EVASION", "pos": (center_x + 240, center_y + 350), "cost": 5, "level": 0, "max": 5, "color": (180, 180, 255), "req": "thorns", "currency": "sp"},
+
+            # UTILITY BRANCH EXTENSIONS
+            {"id": "lucky", "name": "LUCKY DROP", "pos": (center_x - 290, center_y - 120), "cost": 4, "level": 0, "max": 5, "color": (0, 255, 100), "req": "greed", "currency": "sp"},
+            {"id": "xp_boost", "name": "XP BOOST", "pos": (center_x - 290, center_y + 120), "cost": 5, "level": 0, "max": 5, "color": (200, 100, 255), "req": "greed", "currency": "sp"},
+
+            # MOVEMENT BRANCH EXTENSIONS
+            {"id": "dash_dmg", "name": "DASH DAMAGE", "pos": (center_x + 420, center_y - 100), "cost": 4, "level": 0, "max": 5, "color": (255, 50, 100), "req": "dash_cd", "currency": "sp"},
+            {"id": "afterimage", "name": "AFTERIMAGE", "pos": (center_x + 420, center_y + 100), "cost": 6, "level": 0, "max": 3, "color": (150, 0, 255), "req": "dash_cd", "currency": "sp"},
         ]
         
         for skill_node in self.skills:
@@ -79,19 +99,36 @@ class SkillTree:
             elif skill_node["id"] == "armor": player.armor = getattr(player, 'armor', 0) + lvl
             elif skill_node["id"] == "thorns": player.thorns = getattr(player, 'thorns', 0) + lvl
             elif skill_node["id"] == "regen": player.regen = getattr(player, 'regen', 0) + (0.01 * lvl)
-            elif skill_node["id"] == "range": player.attack_radius = min(250, player.attack_radius + (15 * lvl))
+            elif skill_node["id"] == "range": player.attack_radius = min(250, player.attack_radius + (0.1 * lvl))
             elif skill_node["id"] == "multi": player.projectile_count = min(5, 1 + lvl)
             elif skill_node["id"] == "speed": player.speed = min(22, player.speed + (0.4 * lvl))
-            elif skill_node["id"] == "damage": player.damage += 0.5 * lvl
+            elif skill_node["id"] == "damage": player.damage += min(100,player.damage +( 0.2 * lvl))
             elif skill_node["id"] == "magnet": player.magnet_range = min(300, player.magnet_range + (15 * lvl))
             elif skill_node["id"] == "dash": player.dash_unlocked = True
             elif skill_node["id"] == "stamina": player.max_energy += 5 * lvl
             elif skill_node["id"] == "crit": player.crit_chance = getattr(player, 'crit_chance', 0) + (5 * lvl)
-            elif skill_node["id"] == "lifesteal": player.lifesteal = min(30, player.lifesteal + lvl)
-            elif skill_node["id"] == "firerate": player.base_cooldown = max(8, player.base_cooldown - (0.04 * lvl))
+            elif skill_node["id"] == "lifesteal": player.lifesteal = min(15, player.lifesteal + lvl)
+            elif skill_node["id"] == "firerate":
+                # Gentle cooldown reduction: 5% per level
+                player.base_cooldown = player.base_cooldown * (0.95 ** lvl)
+                player.firerate_level = lvl
+            # New skills sync
+            elif skill_node["id"] == "double_strike": player.double_strike_chance = getattr(player, 'double_strike_chance', 0) + (10 * lvl)
+            elif skill_node["id"] == "pierce": player.pierce_count = getattr(player, 'pierce_count', 0) + lvl
+            elif skill_node["id"] == "burn": player.burn_damage = getattr(player, 'burn_damage', 0) + (0.5 * lvl)
+            elif skill_node["id"] == "shield": player.shield_chance = getattr(player, 'shield_chance', 0) + (5 * lvl)
+            elif skill_node["id"] == "revive": player.has_revive = True
+            elif skill_node["id"] == "dodge": player.dodge_chance = getattr(player, 'dodge_chance', 0) + (4 * lvl)
+            elif skill_node["id"] == "lucky": player.lucky_drop = getattr(player, 'lucky_drop', 0) + (5 * lvl)
+            elif skill_node["id"] == "xp_boost": player.xp_multiplier = getattr(player, 'xp_multiplier', 1.0) + (0.1 * lvl)
+            elif skill_node["id"] == "dash_dmg": player.dash_damage = getattr(player, 'dash_damage', 0) + (2 * lvl)
+            elif skill_node["id"] == "afterimage": player.afterimage_count = getattr(player, 'afterimage_count', 0) + lvl
 
+            # Price scaling for BOTH gold and SP
             if skill_node["currency"] == "gold":
                 skill_node["cost"] = int(skill_node["base_cost"] * (1.5 ** lvl))
+            elif skill_node["currency"] == "sp":
+                skill_node["cost"] = int(skill_node["base_cost"] * (1.4 ** lvl))
 
         player.health = player.max_health
         player.energy = player.max_energy
@@ -116,15 +153,11 @@ class SkillTree:
 
                 # --- IMMEDIATE PLAYER UPDATES ---
                 if skill_node["id"] == "health":
-                    if player.max_health >= 500:
-                        # Atceļam pirkumu, jo limits sasniegts
-                        skill_node["level"] -= 1 # Atgriežam līmeni atpakaļ, jo tas tika palielināts pirms if
-                        return None
                     player.max_health += player.max_health * 0.1
                     player.health += player.max_health * 0.1
 
                 elif skill_node["id"] == "armor":
-                    player.armor = getattr(player, 'armor', 0) + 1
+                    player.armor = min(250, getattr(player, 'armor', 0) + 1)
 
                 elif skill_node["id"] == "regen":
                     player.regen = getattr(player, 'regen', 0) + 0.01
@@ -136,20 +169,12 @@ class SkillTree:
                     player.projectile_count = min(5, getattr(player, 'projectile_count', 1) + 1)
 
                 elif skill_node["id"] == "damage":
-                    player.damage += 0.5
+                    player.damage = min(100, player.damage + (player.damage * 0.2))
                 elif skill_node["id"] == "speed":
-                    if player.speed >= 22:
-                        # Atceļam pirkumu, jo limits sasniegts
-                        skill_node["level"] -= 1 # Atgriežam līmeni atpakaļ, jo tas tika palielināts pirms if
-                        return None
                     player.speed = min(22, player.speed + 0.4)
                 
                 elif skill_node["id"] == "lifesteal":
-                    # Hard Cap pārbaude (pieņemsim, ka max ir 30, kā tavā sync funkcijā)
-                    if getattr(player, 'lifesteal', 0) >= 30:
-                        skill_node["level"] -= 1
-                        return None
-                    player.lifesteal = min(30, getattr(player, 'lifesteal', 0) + 1)
+                    player.lifesteal = min(15, getattr(player, 'lifesteal', 0) + 1)
 
                 elif skill_node["id"] == "magnet":
                     player.magnet_range = min(300, player.magnet_range + 15)
@@ -159,9 +184,37 @@ class SkillTree:
                     player.max_energy += 5
                 elif skill_node["id"] == "crit":
                     player.crit_chance = getattr(player, 'crit_chance', 0) + 5
+                elif skill_node["id"] == "firerate":
+                    # 5% cooldown reduction per level
+                    player.base_cooldown = player.base_cooldown * 0.95
+                    player.firerate_level = skill_node["level"]
+                # New skills immediate updates
+                elif skill_node["id"] == "double_strike":
+                    player.double_strike_chance = getattr(player, 'double_strike_chance', 0) + 10
+                elif skill_node["id"] == "pierce":
+                    player.pierce_count = getattr(player, 'pierce_count', 0) + 1
+                elif skill_node["id"] == "burn":
+                    player.burn_damage = getattr(player, 'burn_damage', 0) + 0.5
+                elif skill_node["id"] == "shield":
+                    player.shield_chance = getattr(player, 'shield_chance', 0) + 5
+                elif skill_node["id"] == "revive":
+                    player.has_revive = True
+                elif skill_node["id"] == "dodge":
+                    player.dodge_chance = getattr(player, 'dodge_chance', 0) + 4
+                elif skill_node["id"] == "lucky":
+                    player.lucky_drop = getattr(player, 'lucky_drop', 0) + 5
+                elif skill_node["id"] == "xp_boost":
+                    player.xp_multiplier = getattr(player, 'xp_multiplier', 1.0) + 0.1
+                elif skill_node["id"] == "dash_dmg":
+                    player.dash_damage = getattr(player, 'dash_damage', 0) + 2
+                elif skill_node["id"] == "afterimage":
+                    player.afterimage_count = getattr(player, 'afterimage_count', 0) + 1
                 
+                # Price scaling for BOTH gold and SP
                 if skill_node["currency"] == "gold":
                     skill_node["cost"] = int(skill_node["cost"] * 1.5)
+                elif skill_node["currency"] == "sp":
+                    skill_node["cost"] = int(skill_node["cost"] * 1.4)
                 
                 return "saved"
         return None

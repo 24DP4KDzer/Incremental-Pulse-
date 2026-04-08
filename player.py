@@ -67,6 +67,7 @@ class Player:
         self.gold_modifier = 1.0
         self.crit_chance = 0
         self.lifesteal = 0
+        self.firerate_level = 0
 
         # 4. CĪŅAS STĀVOKLIS
         self.char_type = "none"
