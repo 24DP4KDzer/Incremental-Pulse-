@@ -656,6 +656,11 @@ while True:
                     input_field_active = "username"
                 elif pass_input_rect.collidepoint(event.pos):
                     input_field_active = "password"
+                elif user_clear_btn and user_clear_btn.collidepoint(event.pos):
+                    game_state = "main_menu"
+                    user_name = ""
+                    user_password = ""
+                    input_field_active = None
             elif game_state == "paused":
                 if pause_save_btn.collidepoint(event.pos):
                     save_game_csv(user_name, player.char_type, player, skills, user_password)
@@ -727,7 +732,7 @@ while True:
 
     # --- MENU + LOGIN/REGISTER (MERGED) ---
     elif game_state == "menu":
-        user_input_rect, pass_input_rect, user_clear_btn, pass_clear_btn = draw_login_screen(screen, screen_w, screen_h, menu_bg, user_name, user_password, input_field_active, password_error_msg, password_error_timer, menu_logo, login_img)
+        user_input_rect, pass_input_rect, user_clear_btn, pass_clear_btn = draw_login_screen(screen, screen_w, screen_h, menu_bg, user_name, user_password, input_field_active, password_error_msg, password_error_timer, menu_logo, login_img, back_img)
         
         # Leaderboard
         leaderboard = get_leaderboard(6)

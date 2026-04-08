@@ -40,7 +40,7 @@ def draw_main_menu(screen, screen_w, screen_h, menu_bg, menu_logo, play_img, set
 
 # funkcija draw_login_screen paņem pygame.Surface tipa vērtību screen, int tipa vērtību screen_w, int tipa vērtību screen_h, pygame.Surface tipa vērtību menu_bg, str tipa vērtību user_name, str tipa vērtību user_password, str tipa vērtību input_field_active, str tipa vērtību password_error_msg, int tipa vērtību password_error_timer un pygame.Surface tipa vērtību menu_logo un atgriež tuple tipa vērtību input_rects
 def draw_login_screen(screen, screen_w, screen_h, menu_bg, user_name, user_password, 
-                      input_field_active, password_error_msg, password_error_timer, menu_logo, login_img):
+                      input_field_active, password_error_msg, password_error_timer, menu_logo, login_img, back_img=None):
 
     if menu_bg:
         screen.blit(menu_bg, (0, 0))
@@ -120,8 +120,17 @@ def draw_login_screen(screen, screen_w, screen_h, menu_bg, user_name, user_passw
         err_txt = render_pixel_text(password_error_msg, 14, (255, 80, 80))
         screen.blit(err_txt, err_txt.get_rect(center=(screen_w // 2, screen_h // 2 + 220)))
 
+    # Back Button
+    back_btn = pygame.Rect(20, screen_h - 80, 150, 50)
+    if back_img:
+        screen.blit(back_img, back_btn.topleft)
+    else:
+        pygame.draw.rect(screen, (100, 100, 150), back_btn, border_radius=10)
+        back_text = render_pixel_text("BACK", 16, (255, 255, 255), bold=True)
+        screen.blit(back_text, back_text.get_rect(center=back_btn.center))
+
     # Atgriežam taisnstūrus, lai main.py zinātu, kur lietotājs klikšķina
-    return user_input_rect, pass_input_rect, None, None
+    return user_input_rect, pass_input_rect, back_btn, None
 
 # funkcija draw_settings_overlay pieņem pygame.Surface tipa vērtību screen, int tipa vērtību screen_w, int tipa vērtību screen_h, int tipa vērtību master_volume, int tipa vērtību music_volume un int tipa vērtību sfx_volume un atgriež pygame.Rect tipa vērtību back_button_rect
 def draw_settings_overlay(screen, screen_w, screen_h, master_volume, music_volume, sfx_volume, back_img):
