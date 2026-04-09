@@ -1106,7 +1106,7 @@ while True:
         #Atjaunojam datus pēc tam, kad funkcija tos apstrādājusi
         music_volume = res['music_volume']
         sfx_volume = res['sfx_volume']
-        _dragging_slider = res['dragging']
+        _dragging_slider = res['dragging'] #sda
         settings_buttons = res # Saglabājam pogu rāmjus eventu pārbaudei
         
         # Uzstādām skaļumu sistēmā
