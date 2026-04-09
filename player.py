@@ -91,7 +91,19 @@ class Player:
         self.thorns = 0
         self.crit_chance = 0
         self.lifesteal = 0
-        self.dash_unlocked = False
+        self.dash_unlocked     = False
+        self.base_cooldown     = 25
+        self.gold_modifier     = 1.0
+        # New skill attributes
+        self.firerate_level    = 0
+        self.explosion_lvl     = 0
+        self.poison_lvl        = 0
+        self.shield_lvl        = 0
+        self.gold_rush_lvl     = 0
+        self.knockback_lvl     = 0
+        self.dash_cd_bonus     = 0
+        self.blink_dist        = 140
+        self.energy_drain_mult = 1.0
 
         self.char_type = char_type
         

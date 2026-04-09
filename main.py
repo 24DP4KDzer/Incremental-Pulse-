@@ -12,7 +12,9 @@ from skill_tree import SkillTree
 from boss import Boss
 from screens.menu_screen import draw_main_menu, draw_login_screen, draw_settings_overlay
 from screens.pause_death_screen import draw_death_screen, draw_pause_menu
-from fonts import render_pixel_text, UI_LARGE, UI_MEDIUM, UI_NORMAL, UI_SMALL, UI_TINY, GAME_STATS, GAME_SCORE
+from fonts import (render_pixel_text, UI_LARGE, UI_MEDIUM, UI_NORMAL, 
+                   UI_SMALL, UI_TINY, GAME_STATS, GAME_SCORE)
+import db as DB
 
 # Iegūst skripta direktoriju, lai izkrautos failus no pareizuma ceļa neatkarīgi no darba direktorijas
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -118,6 +120,8 @@ transition_duration = 15  # frames for fade effects (0.25 seconds at 60 FPS)
 transition_type = "fade"  # "fade", "wipe", "dissolve"
 current_wave = 1
 game_state, user_name = "main_menu", ""  # Start at main menu instead of login
+account_in_use = False        # True when another session holds this account
+heartbeat_timer = 0           # counts frames, fires every 5 s
 user_password = ""
 input_field_active = None  # Track which field is being edited ("username", "password", or None)
 password_error_msg = ""
@@ -153,33 +157,31 @@ pause_resume_btn = pygame.Rect(0, 0, 0, 0)
 pause_quit_btn = pygame.Rect(0, 0, 0, 0)
 
 
-# funkcija player_exists_in_csv pieņem str tipa vērtību name un atgriež bool tipa vērtību exists
+# ── DATABASE INIT ─────────────────────────────────────────────────────────
+DB.connect()   # non-blocking; falls back to CSV if offline
+
 def player_exists_in_csv(name):
-    # Pārbauda, vai spēlētājs ar doto vārdu jau eksistē CSV failā
+    if DB.is_connected():
+        return DB.account_exists(name)
     if os.path.exists(PLAYER_FILE):
         try:
-            with open(PLAYER_FILE, 'r', newline='') as f:
-                reader = csv.DictReader(f)
-                for row in reader:
+            with open(PLAYER_FILE, "r", newline="") as f:
+                for row in csv.DictReader(f):
                     if row.get("name") == name:
                         return True
-        except:
-            pass
+        except: pass
     return False
 
-# funkcija check_password pieņem str tipa vērtību name un str tipa vērtību password un atgriež bool tipa vērtību is_correct
 def check_password(name, password):
-    # Pārbauda, vai parole sakrīt ar saglabāto paroli CSV failā
+    if DB.is_connected():
+        return DB.check_password(name, password)
     if os.path.exists(PLAYER_FILE):
         try:
-            with open(PLAYER_FILE, 'r', newline='') as f:
-                reader = csv.DictReader(f)
-                for row in reader:
+            with open(PLAYER_FILE, "r", newline="") as f:
+                for row in csv.DictReader(f):
                     if row.get("name") == name:
-                        stored_password = row.get("password", "")
-                        return stored_password == password
-        except:
-            pass
+                        return row.get("password", "") == password
+        except: pass
     return False
 
 # funkcija apply_boss_drop pieņem Player tipa vērtību player un int tipa vērtību wave un atgriež None tipa vērtību None
@@ -626,9 +628,15 @@ def render_transition(surface):
 
 # funkcija save_game_csv pieņem str tipa vērtību name, str tipa vērtību char_type, Player tipa vērtību p, SkillTree tipa vērtību s_tree un str tipa vērtību password un atgriež None tipa vērtību None
 def save_game_csv(name, char_type, p, s_tree, password=""):
-    # [SAREŽĢĪTA LOĢIKA]: CSV datu atjaunināšana
-    # Šis kods vispirms nolasa visu CSV failu un pārvērš to par vārdnīcu sarakstu (list of dictionaries).
-    # Tas ļauj saglabāt iepriekšējo spēlētāju datus neskartus, kamēr mēs atjauninām tikai konkrētā spēlētāja rindu.
+    """Save to MongoDB Atlas (primary) and CSV (fallback)."""
+    if globals().get('current_wave', 1) > getattr(p, 'highscore', 1):
+        p.highscore = globals().get('current_wave', 1)
+
+    # ── MongoDB save (async, non-blocking) ──────────────────────────────
+    if DB.is_connected():
+        DB.save_character(name, char_type, p, s_tree)
+
+    # ── CSV fallback save ────────────────────────────────────────────────
     p_rows = []
     if os.path.exists(PLAYER_FILE):
         try:
@@ -636,24 +644,9 @@ def save_game_csv(name, char_type, p, s_tree, password=""):
                 p_rows = list(csv.DictReader(f))
         except: p_rows = []
 
-    # Atiestatīt spēlētāja VISUS bonus stats, lai noņemtu bosu dropu bonusus pirms saglabāšanas
-    p.armor = 0
-    p.lifesteal = 0
-    p.crit_chance = 0
-    p.thorns = 0
-    p.regen = 0.0
-    p.gold_modifier = 1.0
-    
-    # Use skill tree bonusu uz tīriem stats
-    s_tree.sync_with_player(p)
-    
-    if globals().get('current_wave', 1) > getattr(p, 'highscore', 1):
-        p.highscore = globals().get('current_wave', 1)
-
-    # Izveido jaunu vārdnīcu ar aktuālajiem spēlētāja datiem
     new_p_data = {
-        "name": name, "password": password, "char_type": char_type, "money": p.money,
-        "max_health": p.max_health, "radius": p.attack_radius,
+        "name": name, "password": password, "char_type": char_type,
+        "money": p.money, "max_health": p.max_health, "radius": p.attack_radius,
         "speed": p.speed, "damage": getattr(p, 'damage', 1.0),
         "multi": getattr(p, 'projectile_count', 1),
         "aspeed": getattr(p, 'base_cooldown', 25),
@@ -669,16 +662,12 @@ def save_game_csv(name, char_type, p, s_tree, password=""):
         "gold_modifier": getattr(p, 'gold_modifier', 1.0),
         "highscore": getattr(p, 'highscore', 1)
     }
-
     for s in s_tree.skills:
         new_p_data[f"skill_{s['id']}"] = s["level"]
 
-    # Meklējam, vai šis spēlētājs un varoņa klase jau eksistē datubāzē.
-    # Ja eksistē, mēs pārrakstām veco rindu. Ja nē, mēs pievienojam to kā jaunu rindu saraksta beigās.
     found_p = False
     for i, row in enumerate(p_rows):
         if row.get("name") == name and row.get("char_type") == char_type:
-            # Ja parole nav sniegta, saglabāt veco paroli
             if not password:
                 password = row.get("password", "")
             new_p_data["password"] = password
@@ -688,76 +677,76 @@ def save_game_csv(name, char_type, p, s_tree, password=""):
     if not found_p:
         p_rows.append(new_p_data)
 
-# Visbeidzot ierakstām atpakaļ visu sarakstu failā ar jaunajiem datiem.
-    with open(PLAYER_FILE, 'w', newline='') as f:
-        # Pievienots extrasaction='ignore', lai ignorētu vecos, neeksistējošos statusefektus
-        writer = csv.DictWriter(f, fieldnames=list(new_p_data.keys()), extrasaction='ignore')
-        writer.writeheader()
-        writer.writerows(p_rows)
+    try:
+        with open(PLAYER_FILE, 'w', newline='') as f:
+            writer = csv.DictWriter(f, fieldnames=list(new_p_data.keys()), extrasaction='ignore')
+            writer.writeheader()
+            writer.writerows(p_rows)
+    except Exception as e:
+        print(f"[CSV] save error: {e}")
 
-# funkcija load_game_csv pieņem str tipa vērtību name, str tipa vērtību char_type, Player tipa vērtību p un SkillTree tipa vērtību s_tree un atgriež None tipa vērtību None
 def load_game_csv(name, char_type, p, s_tree):
-    if os.path.exists(PLAYER_FILE):
+    """Load from MongoDB Atlas first, fall back to CSV."""
+    if DB.is_connected():
+        if DB.load_character(name, char_type, p, s_tree):
+            return   # loaded from Atlas
+
+    # CSV fallback
+    if not os.path.exists(PLAYER_FILE):
+        return
+    try:
         with open(PLAYER_FILE, 'r', newline='') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                if row["name"] == name and row["char_type"] == char_type:
-                    # Iekšējās palīgfunkcijas drošai datu konvertēšanai no teksta uz cipariem.
-                    # Ja šūna ir tukša vai nederīga, tiek atgriezta noklusējuma vērtība 'd'.
-                    # Izmantojam float() pirms int(), lai apstrādātu decimālskaitļus tekstā
-                    def s_i(k, d): 
-                        try:
-                            return int(float(row[k])) if k in row and row[k].strip() else d
-                        except (ValueError, TypeError):
-                            return d
+            for row in csv.DictReader(f):
+                if row.get("name") == name and row.get("char_type") == char_type:
+                    def s_i(k, d):
+                        try: return int(float(row[k])) if k in row and row[k].strip() else d
+                        except: return d
+                    def s_f(k, d):
+                        try: return float(row[k]) if k in row and row[k].strip() else d
+                        except: return d
 
-                    def s_f(k, d): 
-                        try:
-                            return float(row[k]) if k in row and row[k].strip() else d
-                        except (ValueError, TypeError):
-                            return d
-
-                    p.money = s_i("money", 0)
-                    p.max_health = s_f("max_health", 100.0)
-                    p.attack_radius = s_f("radius", 100.0)
-                    p.speed = s_f("speed", 1.3)
-                    p.damage = s_f("damage", 1.0)
+                    p.money            = s_i("money", 0)
+                    p.max_health       = s_f("max_health", 100.0)
+                    p.attack_radius    = s_f("radius", 100.0)
+                    p.speed            = s_f("speed", 1.3)
+                    p.damage           = s_f("damage", 1.0)
                     p.projectile_count = s_i("multi", 1)
-                    p.base_cooldown = s_i("aspeed", 25)
-                    p.max_energy = s_f("max_energy", 10.0)
-                    p.skill_points = s_i("sp", 0)
-                    p.magnet_range = s_i("magnet", 60)
-                    p.dash_unlocked = bool(s_i("dash", 0))
-                    p.armor = s_f("armor", 0)
-                    p.lifesteal = s_f("lifesteal", 0)
-                    p.crit_chance = s_i("crit_chance", 0)
-                    p.thorns = s_i("thorns", 0)
-                    p.regen = s_f("regen", 0.0)
-                    p.gold_modifier = s_f("gold_modifier", 1.0)
-                    p.energy = p.max_energy
-                    p.highscore = s_i("highscore", 1)
-
+                    p.base_cooldown    = s_i("aspeed", 25)
+                    p.max_energy       = s_f("max_energy", 10.0)
+                    p.skill_points     = s_i("sp", 0)
+                    p.magnet_range     = s_i("magnet", 60)
+                    p.dash_unlocked    = bool(s_i("dash", 0))
+                    p.armor            = s_f("armor", 0)
+                    p.lifesteal        = s_f("lifesteal", 0)
+                    p.crit_chance      = s_i("crit_chance", 0)
+                    p.thorns           = s_i("thorns", 0)
+                    p.regen            = s_f("regen", 0.0)
+                    p.gold_modifier    = s_f("gold_modifier", 1.0)
+                    p.energy           = p.max_energy
+                    p.highscore        = s_i("highscore", 1)
                     for s in s_tree.skills:
-                        key = f"skill_{s['id']}"
-                        s["level"] = s_i(key, 0)
-
+                        s["level"] = s_i(f"skill_{s['id']}", 0)
                     s_tree.sync_with_player(p)
+                    return
+    except Exception as e:
+        print(f"[CSV] load error: {e}")
 
-# funkcija get_leaderboard pieņem int tipa vērtību limit un atgriež sarakstu ar augstākajiem rezultātiem
-def get_leaderboard(limit=5):
+def get_leaderboard(limit=6):
+    """Fetch from MongoDB Atlas, fall back to CSV."""
+    if DB.is_connected():
+        result = DB.get_leaderboard(limit)
+        if result:
+            return result
+    # CSV fallback
     entries = []
     if os.path.exists(PLAYER_FILE):
         try:
             with open(PLAYER_FILE, 'r', newline='') as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    try:
-                        score = int(row.get("highscore", "0") or 0)
-                    except ValueError:
-                        score = 0
+                for row in csv.DictReader(f):
+                    try: score = int(row.get("highscore", 0) or 0)
+                    except: score = 0
                     entries.append((row.get("name", ""), row.get("char_type", ""), score))
-        except:
-            return []
+        except: return []
     entries.sort(key=lambda e: e[2], reverse=True)
     return entries[:limit]
 
@@ -798,6 +787,14 @@ while True:
     m_click = pygame.mouse.get_pressed()
     flicker_val += 0.08
 
+    # ── Heartbeat & session check (every ~5 s = 300 frames) ─────────────
+    heartbeat_timer += 1
+    if heartbeat_timer >= 300:
+        heartbeat_timer = 0
+        if user_name and DB.is_connected():
+            DB.heartbeat_session(user_name)
+            account_in_use = DB.is_session_active(user_name)
+
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -805,9 +802,10 @@ while True:
 
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
-                # ESC tikai iziet no spēles, ja NAV playing stāvoklī (pause menu tiek apstrādāts atsevišķi)
                 if game_state != "playing":
-                    if user_name and player.char_type: save_game_csv(user_name, player.char_type, player, skills, user_password)
+                    if user_name and player.char_type:
+                        save_game_csv(user_name, player.char_type, player, skills, user_password)
+                    DB.release_session(user_name)
                     pygame.quit(); sys.exit()
 
             if game_state == "menu":
@@ -818,24 +816,37 @@ while True:
                     else:
                         input_field_active = "username"
                 elif event.key == pygame.K_RETURN:
-                    # atlauja apstiprināt ievadi ar ENTER
                     if user_name.strip() and user_password.strip():
-                        if not player_exists_in_csv(user_name.strip()):
-                            # jauns konts - pārbauda paroli un izveido jaunu ierakstu CSV failā
-                            if len(user_password.strip()) < 4:
+                        uname = user_name.strip()
+                        upass = user_password.strip()
+                        if not player_exists_in_csv(uname):
+                            if len(upass) < 4:
                                 password_error_msg = "Password too short (min 4)!"
                                 password_error_timer = 120
                             else:
-                                save_game_csv(user_name, "wizard", player, skills, user_password)
+                                # Create account in DB + CSV
+                                if DB.is_connected():
+                                    DB.create_account(uname, upass)
+                                save_game_csv(uname, "wizard", player, skills, upass)
                                 is_new_account = True
-                                game_state = "char_select"
-                                password_error_msg = ""
+                                # Acquire session
+                                if not DB.acquire_session(uname):
+                                    password_error_msg = "Account in use on another PC!"
+                                    password_error_timer = 180
+                                else:
+                                    account_in_use = False
+                                    game_state = "char_select"
+                                    password_error_msg = ""
                         else:
-                            # vecs konts - pārbauda paroli un ielādē datus, ja parole pareiza
-                            if check_password(user_name.strip(), user_password.strip()):
-                                is_new_account = False
-                                game_state = "char_select"
-                                password_error_msg = ""
+                            if check_password(uname, upass):
+                                if not DB.acquire_session(uname):
+                                    password_error_msg = "Account in use on another PC!"
+                                    password_error_timer = 180
+                                else:
+                                    is_new_account = False
+                                    account_in_use = False
+                                    game_state = "char_select"
+                                    password_error_msg = ""
                             else:
                                 password_error_msg = "Wrong password!"
                                 password_error_timer = 120
@@ -941,6 +952,7 @@ while True:
                     game_state = "playing"
                 elif pause_quit_btn.collidepoint(event.pos):
                     save_game_csv(user_name, player.char_type, player, skills, user_password)
+                    DB.release_session(user_name)
                     game_state = "menu"
                     user_name = ""
                     user_password = ""
@@ -1104,6 +1116,8 @@ while True:
             if current_wave % 2 == 0:
                 chests.append(Chest(random.randint(100, screen_w-100), random.randint(100, screen_h-100)))
             trigger_save_anim(f"WAVE: {current_wave}")
+            # Auto-save mid-game on wave clear
+            save_game_csv(user_name, player.char_type, player, skills, user_password)
 
         player.move(pygame.key.get_pressed())
         player.rect.clamp_ip(screen.get_rect())
@@ -1370,8 +1384,10 @@ while True:
         death_timer -= 1
         if death_timer <= 0:
             player.setup_class(player.char_type)
-            skills.sync_with_player(player)  # keeps this to reapply skills after reset
+            skills.sync_with_player(player)
             player.boss_drops = []
+            # Auto-save to Atlas when entering skill tree
+            save_game_csv(user_name, player.char_type, player, skills, user_password)
             game_state = "skill_tree"
 
     elif game_state == "skill_tree":
@@ -1383,6 +1399,14 @@ while True:
 
     # Render cinematic transition effects
     render_transition(screen)
+
+    # ── Account-in-use warning banner ───────────────────────────────────
+    if account_in_use:
+        warn_txt = render_pixel_text("⚠  ACCOUNT IN USE ON ANOTHER PC  ⚠", 18, (255, 60, 60), bold=True)
+        warn_bg  = pygame.Surface((warn_txt.get_width() + 20, warn_txt.get_height() + 8), pygame.SRCALPHA)
+        warn_bg.fill((20, 0, 0, 200))
+        screen.blit(warn_bg, (screen_w // 2 - warn_bg.get_width() // 2, screen_h - 30))
+        screen.blit(warn_txt, warn_txt.get_rect(center=(screen_w // 2, screen_h - 22)))
 
     pygame.display.flip()
     clock.tick(60)
