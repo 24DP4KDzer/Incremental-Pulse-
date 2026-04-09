@@ -83,6 +83,81 @@ class SkillTree:
         self.respawn_btn = pygame.Rect(screen_w // 2 - 90, screen_h - 75, 180, 45)
         self.vignette    = self._create_vignette()
 
+        # --- ZVAIGŽŅU FONS (MOVING STARS BACKGROUND) ---
+        import random as _random
+        self._rng = _random.Random(42)   # fixed seed so stars don't jump on reopen
+        self._stars = [
+            {
+                "x":     self._rng.uniform(0, screen_w),
+                "y":     self._rng.uniform(0, screen_h),
+                "speed": self._rng.uniform(0.08, 0.55),
+                "size":  self._rng.choice([1, 1, 1, 2, 2, 3]),
+                "alpha": self._rng.randint(80, 220),
+            }
+            for _ in range(220)
+        ]
+        # A handful of larger, slower "nebula" blobs for depth
+        self._nebulas = [
+            {
+                "x":     self._rng.uniform(0, screen_w),
+                "y":     self._rng.uniform(0, screen_h),
+                "r":     self._rng.randint(40, 90),
+                "color": self._rng.choice([
+                    (30, 0, 60), (0, 20, 60), (0, 40, 30), (50, 0, 50)
+                ]),
+                "alpha": self._rng.randint(18, 45),
+                "speed": self._rng.uniform(0.02, 0.12),
+            }
+            for _ in range(8)
+        ]
+        self._star_surf = pygame.Surface((screen_w, screen_h), pygame.SRCALPHA)
+
+    def _draw_stars(self, screen):
+        """Draw and animate the scrolling star field background."""
+        # Solid deep-space background
+        screen.fill((5, 4, 18))
+
+        self._star_surf.fill((0, 0, 0, 0))
+
+        # Nebula blobs
+        for n in self._nebulas:
+            n["y"] += n["speed"]
+            if n["y"] - n["r"] > self.screen_h:
+                n["y"] = -n["r"]
+            blob = pygame.Surface((n["r"] * 2, n["r"] * 2), pygame.SRCALPHA)
+            pygame.draw.circle(blob, (*n["color"], n["alpha"]), (n["r"], n["r"]), n["r"])
+            self._star_surf.blit(blob, (int(n["x"] - n["r"]), int(n["y"] - n["r"])),
+                                 special_flags=pygame.BLEND_RGBA_ADD)
+
+        # Stars — drift downward slowly
+        t = self.animation_timer
+        for s in self._stars:
+            s["y"] += s["speed"]
+            if s["y"] > self.screen_h:
+                s["y"] = 0
+                s["x"] = self._rng.uniform(0, self.screen_w)
+
+            # Gentle twinkle
+            twinkle = int(20 * math.sin(t * 0.08 + s["x"]))
+            alpha   = max(30, min(255, s["alpha"] + twinkle))
+
+            if s["size"] == 1:
+                pygame.draw.circle(self._star_surf, (255, 255, 255, alpha),
+                                   (int(s["x"]), int(s["y"])), 1)
+            elif s["size"] == 2:
+                pygame.draw.circle(self._star_surf, (200, 220, 255, alpha),
+                                   (int(s["x"]), int(s["y"])), 2)
+            else:
+                # Larger stars get a soft cross-glint
+                cx, cy = int(s["x"]), int(s["y"])
+                pygame.draw.circle(self._star_surf, (255, 255, 255, alpha), (cx, cy), 2)
+                glint_a = alpha // 3
+                for dx, dy in [(-3, 0), (3, 0), (0, -3), (0, 3)]:
+                    pygame.draw.circle(self._star_surf, (200, 210, 255, glint_a),
+                                       (cx + dx, cy + dy), 1)
+
+        screen.blit(self._star_surf, (0, 0))
+
     def _create_vignette(self):
         v = pygame.Surface((self.screen_w, self.screen_h), pygame.SRCALPHA)
         for r in range(0, 600, 40):
@@ -198,6 +273,7 @@ class SkillTree:
 
     def draw(self, screen, money, sp, char_type):
         self.animation_timer += 1
+        self._draw_stars(screen)     # animated star field (drawn first, under everything)
         screen.blit(self.vignette, (0, 0))
 
         screen.blit(self.stat_font.render(f"GOLD: ${money}",     True, (255, 215, 0)),  (40, 40))

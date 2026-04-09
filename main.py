@@ -10,7 +10,8 @@ from action import Coin, SpecialCoin, HpCoin, Chest
 from projectile import Projectile
 from skill_tree import SkillTree
 from boss import Boss
-from screens.menu_screen import draw_main_menu, draw_login_screen, draw_settings_overlay
+from screens.menu_screen import (draw_main_menu, draw_login_screen, draw_settings_overlay,
+                                  draw_leaderboard, draw_delete_confirm)
 from screens.pause_death_screen import draw_death_screen, draw_pause_menu
 from fonts import (render_pixel_text, UI_LARGE, UI_MEDIUM, UI_NORMAL, 
                    UI_SMALL, UI_TINY, GAME_STATS, GAME_SCORE)
@@ -61,9 +62,12 @@ pygame.init()
 MUSIC_END_EVENT = pygame.USEREVENT + 1
 bg_music_files = []
 current_music_index = 0
-master_volume = 100
 music_volume = 10
 sfx_volume = 100
+
+_dragging_slider = None
+settings_mouse_down = False
+settings_mouse_up = False
 
 def get_background_music_files():
     audio_dir = get_path("audio")
@@ -80,7 +84,7 @@ def play_current_bg_music():
     if not bg_music_files:
         return
     pygame.mixer.music.load(bg_music_files[current_music_index])
-    pygame.mixer.music.set_volume((master_volume / 100) * (music_volume / 100))
+    pygame.mixer.music.set_volume(music_volume / 100)
     pygame.mixer.music.play(0)
 
 try:
@@ -143,10 +147,18 @@ show_settings = False
 
 # --- SETTINGS ---
 show_settings = False
-master_volume = 100
 music_volume = 10
 sfx_volume = 100
 settings_buttons = {}
+settings_mouse_down = False   # track slider drag start
+
+# --- LEADERBOARD SEARCH ---
+lb_search_text = ""
+lb_search_active = False
+lb_search_result = ""
+
+# --- DELETE ACCOUNT CONFIRM ---
+show_delete_confirm = False
 
 # --- KILL TIMER ---
 kill_hold_timer = 0
@@ -155,6 +167,10 @@ KILL_HOLD_DURATION = 180  # 3 seconds at 60 FPS
 pause_save_btn = pygame.Rect(0, 0, 0, 0)
 pause_resume_btn = pygame.Rect(0, 0, 0, 0)
 pause_quit_btn = pygame.Rect(0, 0, 0, 0)
+quit_btn = pygame.Rect(0, 0, 0, 0)          # main-menu quit button
+lb_search_rect = pygame.Rect(0, 0, 0, 0)    # leaderboard search bar rect
+delete_account_btn = pygame.Rect(0, 0, 0, 0)
+_delete_confirm_rects = (pygame.Rect(0,0,0,0), pygame.Rect(0,0,0,0))
 
 
 # ── DATABASE INIT ─────────────────────────────────────────────────────────
@@ -317,6 +333,8 @@ menu_logo = load_logo(get_path("photos/logo.png"), screen_w * 0.6, screen_h * 0.
 play_img = load_sprite(get_path("photos/play_button.png"), size=(300, 80))
 settings_img = load_sprite(get_path("photos/settings_button.png"), size=(300, 80))
 back_img = load_sprite(get_path("photos/back_button.png"), size=(150, 50))
+quit_img = load_sprite(get_path("photos/quit_button.png"), size=(220, 70))  # optional; falls back gracefully
+pause_bg = load_bg(get_path("photos/pause_bg.png"))  # optional background for pause menu
 
 original_login_img = pygame.image.load(get_path("photos/login.png")).convert_alpha()
 login_img = pygame.transform.scale(original_login_img, (350, 80))
@@ -802,11 +820,33 @@ while True:
 
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
-                if game_state != "playing":
+                if game_state == "playing":
+                    # ESC during gameplay → pause (same as P key)
+                    start_transition("dissolve")
+                    game_state = "paused"
+                elif game_state == "paused":
+                    # ESC while paused → resume
+                    start_transition("fade")
+                    game_state = "playing"
+                elif game_state == "skill_tree":
+                    # ESC in skill tree → do nothing (player is in skill tree after death, can't resume)
+                    pass
+                elif game_state == "menu":
+                    # ESC on login screen → go back to main menu
+                    game_state = "main_menu"
+                    user_name = ""
+                    user_password = ""
+                    input_field_active = None
+                elif game_state == "char_select":
+                    # ESC on char select → go back to login
+                    game_state = "menu"
+                elif game_state == "main_menu":
+                    # ESC on main menu → quit cleanly
                     if user_name and player.char_type:
                         save_game_csv(user_name, player.char_type, player, skills, user_password)
                     DB.release_session(user_name)
                     pygame.quit(); sys.exit()
+                # In all other states (dead, etc.) ESC is ignored to prevent crashes
 
             if game_state == "menu":
                 if event.key == pygame.K_TAB:
@@ -857,17 +897,36 @@ while True:
                 elif event.key == pygame.K_BACKSPACE:
                     if input_field_active == "username":
                         user_name = user_name[:-1]
-                    else:
+                    elif input_field_active == "password":
                         user_password = user_password[:-1]
+                    elif lb_search_active:
+                        lb_search_text = lb_search_text[:-1]
+                        lb_search_result = ""
+                elif event.key == pygame.K_RETURN:
+                    if lb_search_active and lb_search_text.strip():
+                        # Search leaderboard for this username
+                        full_lb = get_leaderboard(200)
+                        found = False
+                        for rank, (nm, ct, sc) in enumerate(full_lb, 1):
+                            if nm.lower() == lb_search_text.strip().lower():
+                                lb_search_result = f"#{rank}  {nm} ({ct})  Wave {sc}"
+                                found = True
+                                break
+                        if not found:
+                            lb_search_result = "Not found in leaderboard"
                 else:
                     if len(event.unicode) > 0:
-                        # automatiski aktivizē ievades lauku, ja lietotājs sāk rakstīt, un ierobežo ievadi līdz 24 rakstzīmēm
-                        if not input_field_active:
-                            input_field_active = "username"
-                        if input_field_active == "username" and len(user_name) < 24:
-                            user_name += event.unicode
-                        elif input_field_active == "password" and len(user_password) < 24:
-                            user_password += event.unicode
+                        if lb_search_active:
+                            if len(lb_search_text) < 24:
+                                lb_search_text += event.unicode
+                                lb_search_result = ""
+                        else:
+                            if not input_field_active:
+                                input_field_active = "username"
+                            if input_field_active == "username" and len(user_name) < 24:
+                                user_name += event.unicode
+                            elif input_field_active == "password" and len(user_password) < 24:
+                                user_password += event.unicode
 
             elif game_state == "playing" and event.key == pygame.K_SPACE:
                 if getattr(player, 'dash_unlocked', False) and player.dash_cooldown <= 0:
@@ -889,88 +948,118 @@ while True:
                 start_transition("dissolve")
                 game_state = "paused"
 
-            elif game_state == "paused" and event.key == pygame.K_ESCAPE:
-                start_transition("fade")
-                game_state = "playing"
-
         elif MUSIC_END_EVENT is not None and event.type == MUSIC_END_EVENT:
             if bg_music_files:
                 current_music_index = (current_music_index + 1) % len(bg_music_files)
                 play_current_bg_music()
 
         if event.type == pygame.MOUSEBUTTONDOWN:
-            print(f"Pašreizējais stāvokl: {game_state}")
-            if show_settings:
-                if back_btn.collidepoint(event.pos):
-                    show_settings = False # Aizver iestatījumus
-                    print("Back poga nospiesta!") # Pārbaudei konsolē
-                    continue
+            # 1. Prioritāte: Delete Confirm (Bloķē visu)
+            if show_delete_confirm:
+                confirm_btn_r, cancel_btn_r = _delete_confirm_rects
+                if confirm_btn_r.collidepoint(event.pos):
+                    # ... tava dzēšanas loģika ...
+                    show_delete_confirm = False
+                    game_state = "main_menu"
+                elif cancel_btn_r.collidepoint(event.pos):
+                    show_delete_confirm = False
+                continue # Kamēr logs vaļā, tālāk nekas nenotiek
 
+            # 2. Prioritāte: Settings pogas un slīdņi
+            if show_settings:
+                # Pārbaudām BACK pogu
+                if settings_buttons and settings_buttons.get('back').collidepoint(event.pos):
+                    show_settings = False
+                    _dragging_slider = None # Resetojam vilkšanu
+                    continue
+                
+                # Ja neuzspieda BACK, tad iestatām, ka pele ir nospiesta vilkšanai
+                settings_mouse_down = True
+                settings_mouse_up = False
+
+        if event.type == pygame.MOUSEBUTTONUP:
+            settings_mouse_down = False
+            settings_mouse_up = True
+            # Obligāti apstādinām vilkšanu šeit pat
+            _dragging_slider = None
+
+            # 2. SETTINGS SLĪDŅI (Ja logs nav bloķēts)
+            if show_settings:
+                # Pārbaudām BACK pogu
+                if settings_buttons and settings_buttons.get('back').collidepoint(event.pos):
+                    show_settings = False
+                    settings_mouse_down = False
+                    continue
+                
+                # Ja neuzspieda BACK, tātad mēģina vilkt slīdņus
+                settings_mouse_down = True
+                settings_mouse_up = False
+
+            # ── Settings overlay ─────────────────────────────────────────────
+            if show_settings:
+                if settings_buttons and settings_buttons.get('back', pygame.Rect(0,0,0,0)).collidepoint(event.pos):
+                    show_settings = False
+                    continue
+                # Slider click-to-set is handled via mouse_down flag in draw call
+                continue
+
+            # ── Per-state click handling ──────────────────────────────────────
             if game_state == "main_menu":
                 if play_btn.collidepoint(event.pos):
                     game_state = "menu"
-                    user_name = ""
-                    user_password = ""
-                    input_field_active = None
+                    user_name = ""; user_password = ""; input_field_active = None
                 elif settings_btn.collidepoint(event.pos):
                     show_settings = True
-            
-                if show_settings and settings_buttons:
-                    if settings_buttons['back'].collidepoint(event.pos):
-                        show_settings = False
-                    elif settings_buttons['master_minus'].collidepoint(event.pos):
-                        master_volume = max(0, master_volume - 10)
-                        pygame.mixer.music.set_volume(master_volume / 100)
-                    elif settings_buttons['master_plus'].collidepoint(event.pos):
-                        master_volume = min(100, master_volume + 10)
-                        pygame.mixer.music.set_volume(master_volume / 100)
-                    elif settings_buttons['music_minus'].collidepoint(event.pos):
-                        music_volume = max(0, music_volume - 10)
-                        pygame.mixer.music.set_volume((master_volume / 100) * (music_volume / 100))
-                    elif settings_buttons['music_plus'].collidepoint(event.pos):
-                        music_volume = min(100, music_volume + 10)
-                        pygame.mixer.music.set_volume((master_volume / 100) * (music_volume / 100))
-                    elif settings_buttons['sfx_minus'].collidepoint(event.pos):
-                        sfx_volume = max(0, sfx_volume - 10)
-                    elif settings_buttons['sfx_plus'].collidepoint(event.pos):
-                        sfx_volume = min(100, sfx_volume + 10)
+                elif quit_btn.collidepoint(event.pos):
+                    pygame.quit(); sys.exit()
+
             elif game_state == "menu":
                 if user_input_rect.collidepoint(event.pos):
                     input_field_active = "username"
+                    lb_search_active = False
                 elif pass_input_rect.collidepoint(event.pos):
                     input_field_active = "password"
+                    lb_search_active = False
+                elif lb_search_rect.collidepoint(event.pos):
+                    lb_search_active = True
+                    input_field_active = None
                 elif user_clear_btn and user_clear_btn.collidepoint(event.pos):
                     game_state = "main_menu"
-                    user_name = ""
-                    user_password = ""
+                    user_name = ""; user_password = ""; input_field_active = None
+                else:
+                    lb_search_active = False
                     input_field_active = None
+                    # Check delete account button
+                    if delete_account_btn.collidepoint(event.pos):
+                        show_delete_confirm = True
+
             elif game_state == "paused":
                 if pause_save_btn.collidepoint(event.pos):
                     save_game_csv(user_name, player.char_type, player, skills, user_password)
                     trigger_save_anim("GAME SAVED!")
                 elif pause_resume_btn.collidepoint(event.pos):
+                    start_transition("fade")
                     game_state = "playing"
                 elif pause_quit_btn.collidepoint(event.pos):
                     save_game_csv(user_name, player.char_type, player, skills, user_password)
                     DB.release_session(user_name)
                     game_state = "menu"
-                    user_name = ""
-                    user_password = ""
+                    user_name = ""; user_password = ""
                     player = Player()
                     for skill_node in skills.skills:
-                        skill_node["level"] = 0
-                        skill_node["cost"] = skill_node["base_cost"]
+                        skill_node["level"] = 0; skill_node["cost"] = skill_node["base_cost"]
+
             elif game_state == "char_select":
                 for i in range(3):
                     rect = pygame.Rect(screen_w // 2 - 450 + (i * 310), 200, 280, 400)
                     if rect.collidepoint(event.pos):
                         sel = ["wizard", "shadow", "dwarf"][i]
                         player.setup_class(sel)
-                        # Ja jauns konts, saglabā paroli ar spēlētāja datiem
                         if is_new_account:
                             save_game_csv(user_name, sel, player, skills, user_password)
                         load_game_csv(user_name, sel, player, skills)
-                        enemies.clear(); bosses.clear(); projectiles.clear(); coins.clear(); chests.clear(); active_swings.clear()
+                        enemies.clear(); bosses.clear(); projectiles.clear()
+                        coins.clear(); chests.clear(); active_swings.clear()
                         current_wave, max_enemies, time_freeze_timer = 1, 4, 0
                         for _ in range(max_enemies): spawn_enemy()
                         game_state = "playing"
@@ -978,67 +1067,86 @@ while True:
             elif game_state == "skill_tree":
                 result = skills.handle_click(event.pos, player)
                 if result == "respawn":
-                    # 1. Saglabājam svarīgāko
                     saved_money = player.money
                     saved_char = player.char_type
-                    
-                    # 2. Tā vietā, lai taisītu jaunu objektu (kas met kļūdu), 
-                    # mēs izmantojam esošo, bet pilnībā "iztīrām" to.
-                    player.setup_class(saved_char) # Atgriež bāzes HP, Damage, Speed
+                    player.setup_class(saved_char)
                     player.health = player.max_health
                     player.energy = player.max_energy
                     player.money = saved_money
-                    player.boss_drops = [] # Iztīrām bosu bonusus
-                    
-                    # 3. Tikai TAGAD sinhronizējam ar Skill Tree
+                    player.boss_drops = []
                     skills.sync_with_player(player)
-                    
-                    # Atjaunojam spēles pasauli
-                    enemies.clear()
-                    bosses.clear()
-                    projectiles.clear()
+                    enemies.clear(); bosses.clear(); projectiles.clear()
                     current_wave, max_enemies = 1, 4
                     game_state = "playing"
-                    
                 elif result == "saved":
                     save_game_csv(user_name, player.char_type, player, skills, user_password)
                     trigger_save_anim("UPGRADED!")
 
+        # ── Settings slider: track mouse-button-up ───────────────────────────
+        if event.type == pygame.MOUSEBUTTONUP and show_settings:
+            settings_mouse_down = False
+            settings_mouse_up = False
+
+
+
     # --- MAIN MENU ---
     if game_state == "main_menu":
-        # Šī rinda zīmēs izvēlni nepārtraukti, nevis tikai pie klikšķa
-        play_btn, settings_btn = draw_main_menu(screen, screen_w, screen_h, menu_bg, menu_logo, play_img, settings_img)
-    
-    
+        play_btn, settings_btn, quit_btn = draw_main_menu(
+            screen, screen_w, screen_h, menu_bg, menu_logo, play_img, settings_img, quit_img)
+
     # --- SETTINGS OVERLAY (drawn on top of current screen) ---
     if show_settings and game_state != "playing":
-        settings_buttons = draw_settings_overlay(screen, screen_w, screen_h, master_volume, music_volume, sfx_volume, back_img)
-
+        mouse_held = pygame.mouse.get_pressed()[0]
+        res = draw_settings_overlay(
+            screen, screen_w, screen_h, music_volume, sfx_volume, back_img,
+            mouse_pos=m_pos,
+            mouse_down=mouse_held and not settings_mouse_down,
+            mouse_up=not mouse_held and settings_mouse_down,
+        )
+        #Atjaunojam datus pēc tam, kad funkcija tos apstrādājusi
+        music_volume = res['music_volume']
+        sfx_volume = res['sfx_volume']
+        _dragging_slider = res['dragging']
+        settings_buttons = res # Saglabājam pogu rāmjus eventu pārbaudei
+        
+        # Uzstādām skaļumu sistēmā
+        pygame.mixer.music.set_volume(music_volume / 100.0)
+        
+        # Resetojam 'mouse_up', lai tas neizpildās mūžīgi
+        settings_mouse_up = False
     # --- MENU + LOGIN/REGISTER (MERGED) ---
     elif game_state == "menu":
-        user_input_rect, pass_input_rect, user_clear_btn, pass_clear_btn = draw_login_screen(screen, screen_w, screen_h, menu_bg, user_name, user_password, input_field_active, password_error_msg, password_error_timer, menu_logo, login_img, back_img)
-        
-        # Leaderboard
+        user_input_rect, pass_input_rect, user_clear_btn, pass_clear_btn = draw_login_screen(
+            screen, screen_w, screen_h, menu_bg, user_name, user_password,
+            input_field_active, password_error_msg, password_error_timer,
+            menu_logo, login_img, back_img)
+
+        # ── Delete account button ───────────────────────────────────────────
+        if user_name:
+            delete_account_btn = pygame.Rect(screen_w // 2 - 100, screen_h // 2 + 255, 200, 36)
+            pygame.draw.rect(screen, (80, 20, 20), delete_account_btn, border_radius=8)
+            pygame.draw.rect(screen, (200, 50, 50), delete_account_btn, 2, border_radius=8)
+            del_txt = render_pixel_text("DELETE ACCOUNT", 13, (255, 120, 120), bold=True)
+            screen.blit(del_txt, del_txt.get_rect(center=delete_account_btn.center))
+        else:
+            delete_account_btn = pygame.Rect(0, 0, 0, 0)
+
+        # ── Leaderboard ─────────────────────────────────────────────────────
         leaderboard = get_leaderboard(6)
         lb_x = screen_w - 420
         lb_y = screen_h // 4 - 40
-        lb_w, lb_h = 400, 370
-        lb_rect = pygame.Rect(lb_x, lb_y, lb_w, lb_h)
-        pygame.draw.rect(screen, (15, 15, 30), lb_rect, border_radius=12)
-        pygame.draw.rect(screen, (0, 255, 150), lb_rect, 2, border_radius=12)
+        lb_w, lb_h = 400, 390
+        lb_search_rect = draw_leaderboard(
+            screen, leaderboard, lb_x, lb_y, lb_w, lb_h,
+            search_text=lb_search_text,
+            search_active=lb_search_active,
+            search_result=lb_search_result)
 
-        screen.blit(render_pixel_text("LEADERBOARD", 20, (255, 255, 255), bold=True), (lb_x + 20, lb_y + 18))
-
-        if leaderboard:
-            for idx, (name, char_type, score) in enumerate(leaderboard):
-                rank_text = f"{idx + 1}. {name or '---'} ({char_type or 'N/A'})"
-                score_text = f"{score}"
-                entry_surface = render_pixel_text(rank_text, 16, (200, 200, 255))
-                score_surface = render_pixel_text(score_text, 16, (0, 255, 150))
-                screen.blit(entry_surface, (lb_x + 20, lb_y + 60 + idx * 45))
-                screen.blit(score_surface, (lb_x + lb_w - 70, lb_y + 60 + idx * 45))
+        # Draw delete confirm modal if active
+        if show_delete_confirm:
+            _delete_confirm_rects = draw_delete_confirm(screen, screen_w, screen_h)
         else:
-            screen.blit(render_pixel_text("No leaderboard data yet", 16, (150, 150, 150)), (lb_x + 20, lb_y + 60))
+            _delete_confirm_rects = (pygame.Rect(0,0,0,0), pygame.Rect(0,0,0,0))
 
     # --- VAROŅA IZVĒLE ---
     elif game_state == "char_select":
@@ -1257,6 +1365,7 @@ while True:
                 e.update(player.rect, dilation)
                 if player.rect.colliderect(e.rect):
                     player.health -= max(0.05, 0.3 - (getattr(player, 'armor', 0) * 0.03))
+                    player.trigger_damage_flash()
                     if getattr(player, 'thorns', 0) > 0: e.health -= player.thorns
             e.draw(screen)
             if e.health <= 0:
@@ -1270,10 +1379,12 @@ while True:
                 # Ja mēs saņēmam saapi no ugunsbumbas, atņemam dzīvību (ņemot vērā bruņas)
                 if boss_projectile_dmg and boss_projectile_dmg > 0:
                     player.health -= max(1, boss_projectile_dmg - getattr(player, 'armor', 0))
+                    player.trigger_damage_flash()
                     
                 # Pieskaršanās bojājumi joprojām strādā!
                 if player.rect.colliderect(b.rect):
                     player.health -= max(0.1, 0.8 - (getattr(player, 'armor', 0) * 0.05))
+                    player.trigger_damage_flash()
             b.draw(screen)
             if b.health <= 0:
                 apply_boss_drop(player, current_wave)
@@ -1312,6 +1423,7 @@ while True:
         if nuke_flash_timer > 0:
             flash = pygame.Surface((screen_w, screen_h)); flash.fill((255, 255, 255))
             flash.set_alpha(int((nuke_flash_timer / 15) * 255)); screen.blit(flash, (0, 0))
+        player.draw_damage_flash(screen)
         if time_freeze_timer > 0:
             screen.blit(freeze_surf, (0, 0))
 
@@ -1377,7 +1489,7 @@ while True:
             boss_drop_timer -= 1
 
     elif game_state == "paused":
-        pause_save_btn, pause_resume_btn, pause_quit_btn = draw_pause_menu(screen, screen_w, screen_h)
+        pause_save_btn, pause_resume_btn, pause_quit_btn = draw_pause_menu(screen, screen_w, screen_h, pause_bg)
 
     elif game_state == "dead":
         draw_death_screen(screen, screen_w, screen_h, death_timer)
@@ -1402,7 +1514,7 @@ while True:
 
     # ── Account-in-use warning banner ───────────────────────────────────
     if account_in_use:
-        warn_txt = render_pixel_text("⚠  ACCOUNT IN USE ON ANOTHER PC  ⚠", 18, (255, 60, 60), bold=True)
+        warn_txt = render_pixel_text("ACCOUNT IN USE ON ANOTHER PC", 18, (255, 60, 60), bold=True)
         warn_bg  = pygame.Surface((warn_txt.get_width() + 20, warn_txt.get_height() + 8), pygame.SRCALPHA)
         warn_bg.fill((20, 0, 0, 200))
         screen.blit(warn_bg, (screen_w // 2 - warn_bg.get_width() // 2, screen_h - 30))

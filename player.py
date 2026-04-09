@@ -40,7 +40,12 @@ class Player:
         sw, sh = display_info.current_w, display_info.current_h
         
         self.darkness_surf = pygame.Surface((sw, sh), pygame.SRCALPHA)
-        self.darkness_intensity = 235  
+        self.darkness_intensity = 235
+
+        # --- SARKANAS MALAS (DAMAGE VIGNETTE) ---
+        self.damage_flash_timer = 0          # frames remaining for red flash
+        self.damage_flash_duration = 35      # total frames the flash lasts
+        self._damage_vignette = self._build_damage_vignette(sw, sh)
         
         # 2. PASTĀVĪGIE STATI (PARAMETRI)
         self.money = 0
@@ -232,6 +237,45 @@ class Player:
         # Atjaunināt pašreizējo attēlu!
         if len(self.animations[self.direction]) > 0:
             self.image = self.animations[self.direction][self.frame_index]
+
+    # funkcija _build_damage_vignette izveido sarkanu vinjetes virsmu ekrāna malām
+    @staticmethod
+    def _build_damage_vignette(w, h):
+        """Pre-render a red radial vignette (fully opaque version; alpha is set at draw time)."""
+        surf = pygame.Surface((w, h), pygame.SRCALPHA)
+        # Draw several concentric rects that fade outward from transparent centre to red edges
+        steps = 18
+        for i in range(steps):
+            t = i / steps                      # 0 = centre, 1 = edge
+            alpha = int(t ** 1.6 * 255)        # power curve: dark at edge, clear in centre
+            shrink = int((1 - t) * min(w, h) * 0.55)
+            rect = pygame.Rect(shrink, shrink, w - shrink * 2, h - shrink * 2)
+            pygame.draw.rect(surf, (180, 0, 0, 0), surf.get_rect())   # clear full surface first frame — no, just draw the border
+        # Proper approach: draw outward rings
+        surf.fill((0, 0, 0, 0))
+        for i in range(steps, 0, -1):
+            t = i / steps
+            alpha = int(t ** 2.2 * 220)
+            shrink = int((1 - t) * min(w, h) * 0.52)
+            border = max(1, int(min(w, h) * 0.52 / steps) + 2)
+            rect = pygame.Rect(shrink, shrink, w - shrink * 2, h - shrink * 2)
+            pygame.draw.rect(surf, (200, 0, 0, alpha), rect, border, border_radius=max(4, border))
+        return surf.convert_alpha()
+
+    def trigger_damage_flash(self):
+        """Call this whenever the player takes damage to start the red edge flash."""
+        self.damage_flash_timer = self.damage_flash_duration
+
+    def draw_damage_flash(self, screen):
+        """Render a red vignette around screen edges, fading out over time."""
+        if self.damage_flash_timer <= 0:
+            return
+        # Ease-out fade: strongest right after hit, fades quickly
+        t = self.damage_flash_timer / self.damage_flash_duration   # 1.0 → 0.0
+        alpha = int(t ** 0.6 * 255)
+        self._damage_vignette.set_alpha(alpha)
+        screen.blit(self._damage_vignette, (0, 0))
+        self.damage_flash_timer = max(0, self.damage_flash_timer - 1)
 
     # funkcija draw_darkness pieņem pygame.Surface tipa vērtību screen un atgriež None tipa vērtību None
     def draw_darkness(self, screen, flicker_val):

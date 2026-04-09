@@ -21,26 +21,74 @@ _client = None
 _db     = None
 _connected = False
 
+def _get_tls_ca():
+    """Return the path to a CA bundle that works both as a script and inside a PyInstaller exe."""
+    import sys, os
+    # When frozen by PyInstaller the bundle extracts to sys._MEIPASS
+    if getattr(sys, 'frozen', False):
+        # certifi is bundled; find its cacert.pem inside the extracted bundle
+        try:
+            import certifi
+            return certifi.where()
+        except Exception:
+            pass
+        # Fallback: look next to the exe
+        exe_dir = os.path.dirname(sys.executable)
+        for candidate in ["cacert.pem", os.path.join("certifi", "cacert.pem")]:
+            p = os.path.join(exe_dir, candidate)
+            if os.path.exists(p):
+                return p
+    else:
+        try:
+            import certifi
+            return certifi.where()
+        except Exception:
+            return None
+    return None
+
 # ── CONNECTION ────────────────────────────────────────────────────────────────
 
 def connect():
     """Connect to MongoDB Atlas. Safe to call multiple times."""
     global _client, _db, _connected
     if not MONGO_AVAILABLE:
+        print("[DB] pymongo not installed — running offline.")
         return False
     if _connected:
         return True
-    try:
-        _client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=4000)
-        _client.admin.command("ping")          # verify connection
-        _db = _client[DB_NAME]
-        _connected = True
-        print("[DB] Connected to MongoDB Atlas")
-        return True
-    except Exception as e:
-        print(f"[DB] Could not connect: {e}")
-        _connected = False
-        return False
+
+    # Try twice: once fast (4 s), once with a slightly longer timeout in case
+    # the first attempt hits a cold Atlas cluster.
+    for attempt, timeout_ms in enumerate([4000, 7000], start=1):
+        try:
+            kwargs = {"serverSelectionTimeoutMS": timeout_ms}
+            ca = _get_tls_ca()
+            if ca:
+                kwargs["tlsCAFile"] = ca
+            _client = MongoClient(MONGO_URI, **kwargs)
+            _client.admin.command("ping")
+            _db = _client[DB_NAME]
+            _connected = True
+            print("[DB] Connected to MongoDB Atlas")
+            return True
+        except Exception as e:
+            err_str = str(e)
+            if attempt == 1:
+                print(f"[DB] Attempt 1 failed, retrying… ({err_str[:80]})")
+            else:
+                # Give the developer an actionable hint for the most common cause
+                # (IP not whitelisted in Atlas Network Access).
+                if "connection" in err_str.lower() or "timeout" in err_str.lower():
+                    print(
+                        "[DB] Could not reach MongoDB Atlas.\n"
+                        "     Most likely cause: this machine's IP is not whitelisted.\n"
+                        "     Fix → Atlas dashboard ▸ Network Access ▸ Add IP ▸ 0.0.0.0/0\n"
+                        f"     Raw error: {err_str[:120]}"
+                    )
+                else:
+                    print(f"[DB] Could not connect: {err_str}")
+                _connected = False
+    return False
 
 def is_connected():
     return _connected
@@ -87,6 +135,17 @@ def create_account(username: str, plain_password: str) -> bool:
         return True
     except Exception as e:
         print(f"[DB] create_account error: {e}")
+        return False
+
+def delete_account(username: str) -> bool:
+    """Permanently delete an account and all its characters. Returns True on success."""
+    if not _connected:
+        return False
+    try:
+        result = _db.players.delete_one({"username": username})
+        return result.deleted_count > 0
+    except Exception as e:
+        print(f"[DB] delete_account error: {e}")
         return False
 
 # ── SESSION LOCK ──────────────────────────────────────────────────────────────

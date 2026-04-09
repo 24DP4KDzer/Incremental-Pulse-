@@ -29,11 +29,29 @@ def draw_death_screen(screen, screen_w, screen_h, death_timer):
 
 
 # funkcija draw_pause_menu pieņem pygame.Surface tipa vērtību screen, int tipa vērtību screen_w un int tipa vērtību screen_h un atgriež tuple tipa vērtību button_rects
-def draw_pause_menu(screen, screen_w, screen_h):
-    """Draw pause menu overlay"""
-    overlay = pygame.Surface((screen_w, screen_h), pygame.SRCALPHA)
-    overlay.fill((0, 0, 0, 150))
-    screen.blit(overlay, (0, 0))
+def draw_pause_menu(screen, screen_w, screen_h, pause_bg=None):
+    """Draw pause menu overlay with optional background image."""
+    # Draw background image if provided, otherwise draw a dark gradient panel
+    if pause_bg:
+        screen.blit(pause_bg, (0, 0))
+    else:
+        # Nice dark radial-ish gradient panel (drawn as stacked rects getting darker outward)
+        overlay = pygame.Surface((screen_w, screen_h), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 155))
+        screen.blit(overlay, (0, 0))
+        # Central glowing panel behind the buttons
+        panel_w, panel_h = 380, 420
+        panel_x = screen_w // 2 - panel_w // 2
+        panel_y = screen_h // 2 - panel_h // 2 - 30
+        panel_surf = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
+        panel_surf.fill((10, 12, 28, 210))
+        screen.blit(panel_surf, (panel_x, panel_y))
+        pygame.draw.rect(screen, (0, 200, 120), (panel_x, panel_y, panel_w, panel_h), 2, border_radius=16)
+        # Subtle corner accents
+        accent = (0, 255, 150)
+        for cx, cy in [(panel_x, panel_y), (panel_x + panel_w, panel_y),
+                       (panel_x, panel_y + panel_h), (panel_x + panel_w, panel_y + panel_h)]:
+            pygame.draw.circle(screen, accent, (cx, cy), 6)
     
     title = render_pixel_text("PAUSED", 56, (0, 255, 150), bold=True)
     screen.blit(title, (screen_w // 2 - title.get_width() // 2, screen_h // 2 - 150))
