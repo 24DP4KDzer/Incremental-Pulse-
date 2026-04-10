@@ -159,6 +159,10 @@ lb_search_result = ""
 
 # --- DELETE ACCOUNT CONFIRM ---
 show_delete_confirm = False
+delete_confirm_password = ""      # password typed inside the delete modal
+delete_confirm_pw_active = False  # is that input field focused?
+delete_confirm_error_msg = ""
+delete_confirm_error_timer = 0
 
 # --- KILL TIMER ---
 kill_hold_timer = 0
@@ -170,7 +174,7 @@ pause_quit_btn = pygame.Rect(0, 0, 0, 0)
 quit_btn = pygame.Rect(0, 0, 0, 0)          # main-menu quit button
 lb_search_rect = pygame.Rect(0, 0, 0, 0)    # leaderboard search bar rect
 delete_account_btn = pygame.Rect(0, 0, 0, 0)
-_delete_confirm_rects = (pygame.Rect(0,0,0,0), pygame.Rect(0,0,0,0))
+_delete_confirm_rects = (pygame.Rect(0,0,0,0), pygame.Rect(0,0,0,0), pygame.Rect(0,0,0,0))
 
 
 # ── DATABASE INIT ─────────────────────────────────────────────────────────
@@ -825,7 +829,12 @@ while True:
 
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
-                if game_state == "playing":
+                if show_delete_confirm:
+                    show_delete_confirm = False
+                    delete_confirm_password = ""
+                    delete_confirm_pw_active = False
+                    delete_confirm_error_msg = ""
+                elif game_state == "playing":
                     # ESC during gameplay → pause (same as P key)
                     start_transition("dissolve")
                     game_state = "paused"
@@ -852,6 +861,44 @@ while True:
                     DB.release_session(user_name)
                     pygame.quit(); sys.exit()
                 # In all other states (dead, etc.) ESC is ignored to prevent crashes
+
+            # ── Delete-confirm modal keyboard handling ────────────────────────
+            if show_delete_confirm and delete_confirm_pw_active:
+                if event.key == pygame.K_BACKSPACE:
+                    delete_confirm_password = delete_confirm_password[:-1]
+                    delete_confirm_error_msg = ""
+                elif event.key == pygame.K_RETURN:
+                    if check_password(user_name, delete_confirm_password):
+                        if DB.is_connected():
+                            DB.release_session(user_name)
+                            DB.delete_account(user_name)
+                        if os.path.exists(PLAYER_FILE):
+                            try:
+                                with open(PLAYER_FILE, 'r', newline='') as f:
+                                    rows = [r for r in csv.DictReader(f)
+                                            if r.get("name") != user_name]
+                                if rows:
+                                    with open(PLAYER_FILE, 'w', newline='') as f:
+                                        writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
+                                        writer.writeheader()
+                                        writer.writerows(rows)
+                                else:
+                                    open(PLAYER_FILE, 'w').close()
+                            except Exception as _del_e:
+                                print(f"[CSV] delete_account error: {_del_e}")
+                        user_name = ""; user_password = ""
+                        delete_confirm_password = ""; delete_confirm_pw_active = False
+                        delete_confirm_error_msg = ""
+                        input_field_active = None
+                        show_delete_confirm = False
+                        game_state = "main_menu"
+                    else:
+                        delete_confirm_error_msg = "Wrong password!"
+                        delete_confirm_error_timer = 120
+                        delete_confirm_password = ""
+                elif len(event.unicode) > 0 and len(delete_confirm_password) < 32:
+                    delete_confirm_password += event.unicode
+                    delete_confirm_error_msg = ""
 
             if game_state == "menu":
                 if event.key == pygame.K_TAB:
@@ -979,36 +1026,49 @@ while True:
         if event.type == pygame.MOUSEBUTTONDOWN:
             # 1. Prioritāte: Delete Confirm (Bloķē visu)
             if show_delete_confirm:
-                confirm_btn_r, cancel_btn_r = _delete_confirm_rects
+                confirm_btn_r, cancel_btn_r, del_pw_rect = _delete_confirm_rects
                 if confirm_btn_r.collidepoint(event.pos):
-                    # ── Actually delete the account ───────────────────────────
-                    # 1. Delete from MongoDB Atlas
-                    if DB.is_connected():
-                        DB.release_session(user_name)   # drop session lock first
-                        DB.delete_account(user_name)
-                    # 2. Remove all rows for this username from the CSV fallback
-                    if os.path.exists(PLAYER_FILE):
-                        try:
-                            with open(PLAYER_FILE, 'r', newline='') as f:
-                                rows = [r for r in csv.DictReader(f)
-                                        if r.get("name") != user_name]
-                            if rows:
-                                with open(PLAYER_FILE, 'w', newline='') as f:
-                                    writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
-                                    writer.writeheader()
-                                    writer.writerows(rows)
-                            else:
-                                open(PLAYER_FILE, 'w').close()  # wipe file if now empty
-                        except Exception as _del_e:
-                            print(f"[CSV] delete_account error: {_del_e}")
-                    # 3. Reset all local state and return to main menu
-                    user_name = ""
-                    user_password = ""
-                    input_field_active = None
-                    show_delete_confirm = False
-                    game_state = "main_menu"
+                    # ── Validate password before deleting ────────────────────
+                    if not check_password(user_name, delete_confirm_password):
+                        delete_confirm_error_msg = "Wrong password!"
+                        delete_confirm_error_timer = 120
+                        delete_confirm_password = ""
+                    else:
+                        # ── Actually delete the account ───────────────────────
+                        if DB.is_connected():
+                            DB.release_session(user_name)
+                            DB.delete_account(user_name)
+                        if os.path.exists(PLAYER_FILE):
+                            try:
+                                with open(PLAYER_FILE, 'r', newline='') as f:
+                                    rows = [r for r in csv.DictReader(f)
+                                            if r.get("name") != user_name]
+                                if rows:
+                                    with open(PLAYER_FILE, 'w', newline='') as f:
+                                        writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
+                                        writer.writeheader()
+                                        writer.writerows(rows)
+                                else:
+                                    open(PLAYER_FILE, 'w').close()
+                            except Exception as _del_e:
+                                print(f"[CSV] delete_account error: {_del_e}")
+                        user_name = ""
+                        user_password = ""
+                        delete_confirm_password = ""
+                        delete_confirm_pw_active = False
+                        delete_confirm_error_msg = ""
+                        input_field_active = None
+                        show_delete_confirm = False
+                        game_state = "main_menu"
                 elif cancel_btn_r.collidepoint(event.pos):
                     show_delete_confirm = False
+                    delete_confirm_password = ""
+                    delete_confirm_pw_active = False
+                    delete_confirm_error_msg = ""
+                elif del_pw_rect.collidepoint(event.pos):
+                    delete_confirm_pw_active = True
+                else:
+                    delete_confirm_pw_active = False
                 continue  # block all other clicks while modal is open
 
             # 2. Prioritāte: Settings BACK poga
@@ -1145,9 +1205,16 @@ while True:
 
         # Draw delete confirm modal if active
         if show_delete_confirm:
-            _delete_confirm_rects = draw_delete_confirm(screen, screen_w, screen_h)
+            if delete_confirm_error_timer > 0:
+                delete_confirm_error_timer -= 1
+            _delete_confirm_rects = draw_delete_confirm(
+                screen, screen_w, screen_h,
+                delete_password=delete_confirm_password,
+                delete_pw_active=delete_confirm_pw_active,
+                delete_error_msg=delete_confirm_error_msg,
+                delete_error_timer=delete_confirm_error_timer)
         else:
-            _delete_confirm_rects = (pygame.Rect(0,0,0,0), pygame.Rect(0,0,0,0))
+            _delete_confirm_rects = (pygame.Rect(0,0,0,0), pygame.Rect(0,0,0,0), pygame.Rect(0,0,0,0))
 
     # --- VAROŅA IZVĒLE ---
     elif game_state == "char_select":
@@ -1429,6 +1496,25 @@ while True:
             flash = pygame.Surface((screen_w, screen_h)); flash.fill((255, 255, 255))
             flash.set_alpha(int((nuke_flash_timer / 15) * 255)); screen.blit(flash, (0, 0))
         player.draw_damage_flash(screen)
+        # ── Red vignette damage indicator ─────────────────────────────────
+        _dmg_flash = getattr(player, 'damage_flash_timer', 0)
+        if _dmg_flash > 0:
+            _vign_alpha = int(180 * (_dmg_flash / max(1, getattr(player, 'damage_flash_duration', 20))))
+            _vign_depth = 50   # how many px the shadow bleeds inward from each edge
+            _vign_surf  = pygame.Surface((screen_w, screen_h), pygame.SRCALPHA)
+            # Four gradient strips: top, bottom, left, right
+            for _step in range(_vign_depth):
+                _edge_alpha = int(_vign_alpha * (1.0 - _step / _vign_depth) ** 1.8)
+                _col = (200, 0, 0, _edge_alpha)
+                # top strip
+                pygame.draw.line(_vign_surf, _col, (0, _step), (screen_w, _step))
+                # bottom strip
+                pygame.draw.line(_vign_surf, _col, (0, screen_h - 1 - _step), (screen_w, screen_h - 1 - _step))
+                # left strip
+                pygame.draw.line(_vign_surf, _col, (_step, 0), (_step, screen_h))
+                # right strip
+                pygame.draw.line(_vign_surf, _col, (screen_w - 1 - _step, 0), (screen_w - 1 - _step, screen_h))
+            screen.blit(_vign_surf, (0, 0))
         if time_freeze_timer > 0:
             screen.blit(freeze_surf, (0, 0))
 

@@ -260,40 +260,66 @@ def draw_leaderboard(screen, leaderboard, lb_x, lb_y, lb_w, lb_h,
 
 
 # ─── DELETE ACCOUNT CONFIRMATION OVERLAY ─────────────────────────────────────
-def draw_delete_confirm(screen, screen_w, screen_h):
+def draw_delete_confirm(screen, screen_w, screen_h,
+                        delete_password="", delete_pw_active=False,
+                        delete_error_msg="", delete_error_timer=0):
     """
     Draw a modal confirmation dialog for account deletion.
-    Returns: (confirm_btn_rect, cancel_btn_rect)
+    Requires the player to re-enter their password before deletion is allowed.
+
+    Returns: (confirm_btn_rect, cancel_btn_rect, password_input_rect)
     """
     # Dim background
     dim = pygame.Surface((screen_w, screen_h), pygame.SRCALPHA)
-    dim.fill((0, 0, 0, 180))
+    dim.fill((0, 0, 0, 190))
     screen.blit(dim, (0, 0))
 
-    # Dialog box
-    box_w, box_h = 480, 220
+    # Dialog box — taller to fit the password field
+    box_w, box_h = 500, 310
     box_rect = pygame.Rect(screen_w // 2 - box_w // 2, screen_h // 2 - box_h // 2, box_w, box_h)
-    pygame.draw.rect(screen, (25, 10, 10), box_rect, border_radius=14)
+    pygame.draw.rect(screen, (25, 8, 8), box_rect, border_radius=14)
     pygame.draw.rect(screen, (200, 50, 50), box_rect, 3, border_radius=14)
 
+    # Title
     title_surf = render_pixel_text("DELETE ACCOUNT?", 26, (255, 60, 60), bold=True)
-    screen.blit(title_surf, title_surf.get_rect(center=(screen_w // 2, box_rect.y + 40)))
+    screen.blit(title_surf, title_surf.get_rect(center=(screen_w // 2, box_rect.y + 38)))
 
+    # Warning line
     warn_surf = render_pixel_text("This will permanently delete ALL your data!", 14, (255, 180, 180))
-    screen.blit(warn_surf, warn_surf.get_rect(center=(screen_w // 2, box_rect.y + 80)))
+    screen.blit(warn_surf, warn_surf.get_rect(center=(screen_w // 2, box_rect.y + 78)))
 
-    # Confirm button
-    confirm_btn = pygame.Rect(screen_w // 2 - 190, box_rect.y + 130, 170, 50)
+    # ── Password label ────────────────────────────────────────────────────
+    pw_label = render_pixel_text("Enter your password to confirm:", 13, (200, 160, 160))
+    screen.blit(pw_label, pw_label.get_rect(center=(screen_w // 2, box_rect.y + 118)))
+
+    # Password input box
+    pw_input_rect = pygame.Rect(screen_w // 2 - 170, box_rect.y + 136, 340, 44)
+    border_col = (255, 80, 80) if delete_pw_active else (140, 50, 50)
+    pygame.draw.rect(screen, (40, 12, 12), pw_input_rect, border_radius=8)
+    pygame.draw.rect(screen, border_col, pw_input_rect, 2, border_radius=8)
+
+    hidden = "*" * len(delete_password)
+    display_pw = (hidden + "|") if delete_pw_active else (hidden if delete_password else "Password")
+    pw_color   = (255, 255, 255) if delete_password else (130, 90, 90)
+    pw_surf    = render_pixel_text(display_pw, 16, pw_color)
+    screen.blit(pw_surf, pw_surf.get_rect(center=pw_input_rect.center))
+
+    # Error message
+    if delete_error_timer > 0 and delete_error_msg:
+        err_surf = render_pixel_text(delete_error_msg, 13, (255, 80, 80))
+        screen.blit(err_surf, err_surf.get_rect(center=(screen_w // 2, box_rect.y + 198)))
+
+    # ── Buttons ───────────────────────────────────────────────────────────
+    confirm_btn = pygame.Rect(screen_w // 2 - 200, box_rect.y + 226, 180, 50)
     pygame.draw.rect(screen, (180, 30, 30), confirm_btn, border_radius=10)
     pygame.draw.rect(screen, (255, 80, 80), confirm_btn, 2, border_radius=10)
     c_txt = render_pixel_text("YES, DELETE", 16, (255, 255, 255), bold=True)
     screen.blit(c_txt, c_txt.get_rect(center=confirm_btn.center))
 
-    # Cancel button
-    cancel_btn = pygame.Rect(screen_w // 2 + 20, box_rect.y + 130, 170, 50)
+    cancel_btn = pygame.Rect(screen_w // 2 + 20, box_rect.y + 226, 180, 50)
     pygame.draw.rect(screen, (40, 100, 40), cancel_btn, border_radius=10)
     pygame.draw.rect(screen, (0, 200, 100), cancel_btn, 2, border_radius=10)
     x_txt = render_pixel_text("CANCEL", 16, (255, 255, 255), bold=True)
     screen.blit(x_txt, x_txt.get_rect(center=cancel_btn.center))
 
-    return confirm_btn, cancel_btn
+    return confirm_btn, cancel_btn, pw_input_rect
