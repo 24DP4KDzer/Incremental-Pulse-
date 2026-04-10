@@ -258,8 +258,13 @@ def apply_boss_drop(player, wave):
 
 
     elif drop_type == "armor":
-        armor_boost = 1 + (wave // 8) 
-        player.armor = getattr(player, 'armor', 0) + armor_boost
+        armor_boost = 1 + (wave // 8)
+        new_armor = getattr(player, 'armor', 0) + armor_boost
+        if new_armor > 30:
+            player.money += 100
+            trigger_boss_drop_anim("ARMOR MAXED! +$100")
+            return "money"
+        player.armor = new_armor
         trigger_boss_drop_anim(f"ARMOR BOOST! +{armor_boost}")
 
     elif drop_type == "lifesteal":
@@ -904,16 +909,34 @@ while True:
                         lb_search_result = ""
                 elif event.key == pygame.K_RETURN:
                     if lb_search_active and lb_search_text.strip():
-                        # Search leaderboard for this username
-                        full_lb = get_leaderboard(200)
+                        query = lb_search_text.strip()
                         found = False
-                        for rank, (nm, ct, sc) in enumerate(full_lb, 1):
-                            if nm.lower() == lb_search_text.strip().lower():
+                        # ── Try DB first (searches ALL entries, no limit) ──────
+                        if DB.is_connected():
+                            hit = DB.search_leaderboard(query)
+                            if hit:
+                                rank, nm, ct, sc = hit
                                 lb_search_result = f"#{rank}  {nm} ({ct})  Wave {sc}"
                                 found = True
-                                break
+                        # ── CSV fallback: scan entire file ───────────────────
+                        if not found and os.path.exists(PLAYER_FILE):
+                            try:
+                                csv_entries = []
+                                with open(PLAYER_FILE, 'r', newline='') as f:
+                                    for row in csv.DictReader(f):
+                                        try: sc = int(row.get("highscore", 0) or 0)
+                                        except: sc = 0
+                                        csv_entries.append((row.get("name",""), row.get("char_type",""), sc))
+                                csv_entries.sort(key=lambda e: e[2], reverse=True)
+                                for rank, (nm, ct, sc) in enumerate(csv_entries, 1):
+                                    if nm.lower() == query.lower():
+                                        lb_search_result = f"#{rank}  {nm} ({ct})  Wave {sc}"
+                                        found = True
+                                        break
+                            except Exception:
+                                pass
                         if not found:
-                            lb_search_result = "Not found in leaderboard"
+                            lb_search_result = f'"{query}" not found'
                 else:
                     if len(event.unicode) > 0:
                         if lb_search_active:
@@ -958,50 +981,41 @@ while True:
             if show_delete_confirm:
                 confirm_btn_r, cancel_btn_r = _delete_confirm_rects
                 if confirm_btn_r.collidepoint(event.pos):
-                    # ... tava dzēšanas loģika ...
+                    # ── Actually delete the account ───────────────────────────
+                    # 1. Delete from MongoDB Atlas
+                    if DB.is_connected():
+                        DB.release_session(user_name)   # drop session lock first
+                        DB.delete_account(user_name)
+                    # 2. Remove all rows for this username from the CSV fallback
+                    if os.path.exists(PLAYER_FILE):
+                        try:
+                            with open(PLAYER_FILE, 'r', newline='') as f:
+                                rows = [r for r in csv.DictReader(f)
+                                        if r.get("name") != user_name]
+                            if rows:
+                                with open(PLAYER_FILE, 'w', newline='') as f:
+                                    writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
+                                    writer.writeheader()
+                                    writer.writerows(rows)
+                            else:
+                                open(PLAYER_FILE, 'w').close()  # wipe file if now empty
+                        except Exception as _del_e:
+                            print(f"[CSV] delete_account error: {_del_e}")
+                    # 3. Reset all local state and return to main menu
+                    user_name = ""
+                    user_password = ""
+                    input_field_active = None
                     show_delete_confirm = False
                     game_state = "main_menu"
                 elif cancel_btn_r.collidepoint(event.pos):
                     show_delete_confirm = False
-                continue # Kamēr logs vaļā, tālāk nekas nenotiek
+                continue  # block all other clicks while modal is open
 
-            # 2. Prioritāte: Settings pogas un slīdņi
+            # 2. Prioritāte: Settings BACK poga
             if show_settings:
-                # Pārbaudām BACK pogu
                 if settings_buttons and settings_buttons.get('back').collidepoint(event.pos):
                     show_settings = False
-                    _dragging_slider = None # Resetojam vilkšanu
-                    continue
-                
-                # Ja neuzspieda BACK, tad iestatām, ka pele ir nospiesta vilkšanai
-                settings_mouse_down = True
-                settings_mouse_up = False
-
-        if event.type == pygame.MOUSEBUTTONUP:
-            settings_mouse_down = False
-            settings_mouse_up = True
-            # Obligāti apstādinām vilkšanu šeit pat
-            _dragging_slider = None
-
-            # 2. SETTINGS SLĪDŅI (Ja logs nav bloķēts)
-            if show_settings:
-                # Pārbaudām BACK pogu
-                if settings_buttons and settings_buttons.get('back').collidepoint(event.pos):
-                    show_settings = False
-                    settings_mouse_down = False
-                    continue
-                
-                # Ja neuzspieda BACK, tātad mēģina vilkt slīdņus
-                settings_mouse_down = True
-                settings_mouse_up = False
-
-            # ── Settings overlay ─────────────────────────────────────────────
-            if show_settings:
-                if settings_buttons and settings_buttons.get('back', pygame.Rect(0,0,0,0)).collidepoint(event.pos):
-                    show_settings = False
-                    continue
-                # Slider click-to-set is handled via mouse_down flag in draw call
-                continue
+                continue  # All other clicks handled inside draw_settings_overlay via mouse state
 
             # ── Per-state click handling ──────────────────────────────────────
             if game_state == "main_menu":
@@ -1082,12 +1096,6 @@ while True:
                     save_game_csv(user_name, player.char_type, player, skills, user_password)
                     trigger_save_anim("UPGRADED!")
 
-        # ── Settings slider: track mouse-button-up ───────────────────────────
-        if event.type == pygame.MOUSEBUTTONUP and show_settings:
-            settings_mouse_down = False
-            settings_mouse_up = False
-
-
 
     # --- MAIN MENU ---
     if game_state == "main_menu":
@@ -1096,24 +1104,17 @@ while True:
 
     # --- SETTINGS OVERLAY (drawn on top of current screen) ---
     if show_settings and game_state != "playing":
-        mouse_held = pygame.mouse.get_pressed()[0]
+        _mouse_btn = pygame.mouse.get_pressed()[0]   # True while left button held
         res = draw_settings_overlay(
             screen, screen_w, screen_h, music_volume, sfx_volume, back_img,
             mouse_pos=m_pos,
-            mouse_down=mouse_held and not settings_mouse_down,
-            mouse_up=not mouse_held and settings_mouse_down,
+            mouse_down=_mouse_btn,
+            mouse_up=False,   # menu_screen.py handles release via _dragging_slider check
         )
-        #Atjaunojam datus pēc tam, kad funkcija tos apstrādājusi
-        music_volume = res['music_volume']
-        sfx_volume = res['sfx_volume']
-        _dragging_slider = res['dragging'] #sda
-        settings_buttons = res # Saglabājam pogu rāmjus eventu pārbaudei
-        
-        # Uzstādām skaļumu sistēmā
+        music_volume    = res['music_volume']
+        sfx_volume      = res['sfx_volume']
+        settings_buttons = res
         pygame.mixer.music.set_volume(music_volume / 100.0)
-        
-        # Resetojam 'mouse_up', lai tas neizpildās mūžīgi
-        settings_mouse_up = False
     # --- MENU + LOGIN/REGISTER (MERGED) ---
     elif game_state == "menu":
         user_input_rect, pass_input_rect, user_clear_btn, pass_clear_btn = draw_login_screen(
@@ -1370,6 +1371,10 @@ while True:
             e.draw(screen)
             if e.health <= 0:
                 enemies.remove(e); player.money += 2; boss_energy += 10
+                # Soul Drain: wizard gains a tiny amount of energy per kill
+                soul_lvl = getattr(player, 'soul_drain_lvl', 0)
+                if soul_lvl > 0 and player.char_type == "wizard":
+                    player.energy = min(player.max_energy, player.energy + 0.15 * soul_lvl)
 
         for b in bosses[:]:
             if time_freeze_timer <= 0:

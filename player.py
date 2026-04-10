@@ -109,6 +109,7 @@ class Player:
         self.dash_cd_bonus     = 0
         self.blink_dist        = 140
         self.energy_drain_mult = 1.0
+        self.soul_drain_lvl    = 0
 
         self.char_type = char_type
         

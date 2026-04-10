@@ -168,22 +168,22 @@ def draw_settings_overlay(screen, screen_w, screen_h, music_volume, sfx_volume, 
 
     # ── VILKŠANAS LOĢIKA ───────────────────────────────────────────────────
     if mouse_pos:
-        # SĀK VILKT: Ja pele nospiesta, pārbaudām vai trāpīts slīdņu zonā
+        # If mouse button is held down, try to claim or continue dragging
         if mouse_down:
-            # Izmantojam inflate, lai būtu vieglāk trāpīt ar peli uz tievās līnijas
-            if music_rect.inflate(0, 30).collidepoint(mouse_pos):
-                _dragging_slider = "music"
-            elif sfx_rect.inflate(0, 30).collidepoint(mouse_pos):
-                _dragging_slider = "sfx"
+            if _dragging_slider is None:
+                # Initiate drag — check if mouse is near either knob/track
+                if music_rect.inflate(0, 30).collidepoint(mouse_pos):
+                    _dragging_slider = "music"
+                elif sfx_rect.inflate(0, 30).collidepoint(mouse_pos):
+                    _dragging_slider = "sfx"
 
-        # PROCESĀ: Ja kāds slīdnis ir satvērts, mainām tā vērtību
-        if _dragging_slider == "music":
-            music_volume = _get_val(music_rect, mouse_pos[0])
-        elif _dragging_slider == "sfx":
-            sfx_volume = _get_val(sfx_rect, mouse_pos[0])
-
-        # BEIDZ VILKT: Ja pele atlaista, atlaižam slīdni
-        if mouse_up:
+            # Apply drag movement to whichever slider is grabbed
+            if _dragging_slider == "music":
+                music_volume = _get_val(music_rect, mouse_pos[0])
+            elif _dragging_slider == "sfx":
+                sfx_volume = _get_val(sfx_rect, mouse_pos[0])
+        else:
+            # Mouse button released — drop the slider
             _dragging_slider = None
 
     # ── ZĪMĒŠANA ──────────────────────────────────────────────────────────

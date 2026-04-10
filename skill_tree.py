@@ -28,6 +28,9 @@ class SkillTree:
              "cost": 4,  "level": 0, "max": 5,  "color": (150, 0, 0),     "req": "damage",       "currency": "sp"},
             {"id": "explosion",    "name": "KILL EXPLOSION", "pos": (cx,       cy - 390),
              "cost": 5,  "level": 0, "max": 5,  "color": (255, 80, 0),    "req": "lifesteal",    "currency": "sp"},
+            {"id": "soul_drain",   "name": "SOUL DRAIN",     "pos": (cx + 130, cy - 390),
+             "cost": 3,  "level": 0, "max": 5,  "color": (180, 0, 255),   "req": "explosion",    "currency": "sp",
+             "wizard_only": True},
 
             {"id": "range",        "name": "ATTACK RANGE",   "pos": (cx - 130, cy - 220),
              "cost": 40, "level": 0, "max": 10, "color": (255, 220, 50),  "req": "damage",       "currency": "gold"},
@@ -41,7 +44,7 @@ class SkillTree:
             {"id": "crit",         "name": "CRIT CHANCE",    "pos": (cx + 130, cy - 340),
              "cost": 50, "level": 0, "max": 10, "color": (255, 0, 0),     "req": "multi",        "currency": "gold"},
             {"id": "firerate",     "name": "ATTACK SPEED",   "pos": (cx + 260, cy - 340),
-             "cost": 45, "level": 0, "max": 10, "color": (255, 100, 100), "req": "crit",         "currency": "gold"},
+             "cost": 45, "level": 0, "max": 8,  "color": (255, 100, 100), "req": "crit",         "currency": "gold"},
 
             # DEFENSE (down)
             {"id": "health",       "name": "MAX HEALTH",     "pos": (cx,       cy + 130),
@@ -174,7 +177,7 @@ class SkillTree:
             sid = node["id"]
 
             if   sid == "health":        player.max_health        = min(500, player.max_health + (player.max_health * 0.1) * lvl)
-            elif sid == "armor":         player.armor             = getattr(player, "armor",          0)   + lvl
+            elif sid == "armor":         player.armor             = min(30, getattr(player, "armor", 0) + lvl)
             elif sid == "thorns":        player.thorns            = getattr(player, "thorns",         0)   + lvl
             elif sid == "regen":         player.regen             = getattr(player, "regen",          0)   + 0.01 * lvl
             elif sid == "range":         player.attack_radius     = min(250, player.attack_radius     + 15 * lvl)
@@ -189,9 +192,10 @@ class SkillTree:
             elif sid == "crit":          player.crit_chance       = getattr(player, "crit_chance",    0)   + 5 * lvl
             elif sid == "lifesteal":     player.lifesteal         = min(30, player.lifesteal + lvl)
             elif sid == "firerate":
-                player.base_cooldown  = max(5, player.base_cooldown - 2 * lvl)
+                player.base_cooldown  = max(12, player.base_cooldown - int(1.5 * lvl))
                 player.firerate_level = lvl
             elif sid == "explosion":     player.explosion_lvl     = getattr(player, "explosion_lvl",  0)   + lvl
+            elif sid == "soul_drain":    player.soul_drain_lvl    = getattr(player, "soul_drain_lvl",  0)   + lvl
             elif sid == "poison":        player.poison_lvl        = getattr(player, "poison_lvl",     0)   + lvl
             elif sid == "shield":        player.shield_lvl        = getattr(player, "shield_lvl",     0)   + lvl
             elif sid == "greed":         player.gold_modifier     = getattr(player, "gold_modifier",  1.0) + 0.25 * lvl
@@ -216,6 +220,9 @@ class SkillTree:
                 continue
             if node["req_node"] and node["req_node"]["level"] < 1:
                 continue
+            # Wizard-only skills cannot be purchased by other classes
+            if node.get("wizard_only") and getattr(player, "char_type", "") != "wizard":
+                continue
 
             if node["currency"] == "gold":
                 if player.money < node["cost"]: continue
@@ -231,7 +238,10 @@ class SkillTree:
                 if player.max_health >= 500: node["level"] -= 1; return None
                 player.max_health += player.max_health * 0.1
                 player.health     += player.max_health * 0.1
-            elif sid == "armor":         player.armor             = getattr(player, "armor",          0)   + 1
+            elif sid == "armor":
+                new_armor = getattr(player, "armor", 0) + 1
+                if new_armor > 30: node["level"] -= 1; return None
+                player.armor = new_armor
             elif sid == "regen":         player.regen             = getattr(player, "regen",          0)   + 0.01
             elif sid == "thorns":        player.thorns            = getattr(player, "thorns",         0)   + 1
             elif sid == "range":         player.attack_radius     = min(250, player.attack_radius     + 15)
@@ -250,9 +260,10 @@ class SkillTree:
             elif sid == "stamina":       player.max_energy       += 5
             elif sid == "crit":          player.crit_chance       = getattr(player, "crit_chance",    0)   + 5
             elif sid == "firerate":
-                player.base_cooldown  = max(5, player.base_cooldown - 2)
+                player.base_cooldown  = max(12, player.base_cooldown - 1)
                 player.firerate_level = getattr(player, "firerate_level", 0) + 1
             elif sid == "explosion":     player.explosion_lvl     = getattr(player, "explosion_lvl",  0)   + 1
+            elif sid == "soul_drain":    player.soul_drain_lvl    = getattr(player, "soul_drain_lvl",  0)   + 1
             elif sid == "poison":        player.poison_lvl        = getattr(player, "poison_lvl",     0)   + 1
             elif sid == "shield":        player.shield_lvl        = getattr(player, "shield_lvl",     0)   + 1
             elif sid == "greed":         player.gold_modifier     = getattr(player, "gold_modifier",  1.0) + 0.25
@@ -293,22 +304,30 @@ class SkillTree:
             hovered = (mouse_pos[0] - nx)**2 + (mouse_pos[1] - ny)**2 < self.circle_radius**2
             radius  = self.circle_radius + (3 if hovered else 0)
 
-            pygame.draw.circle(screen, (55, 55, 80) if hovered else (30, 30, 45), (nx, ny), radius)
-            pygame.draw.circle(screen, node["color"], (nx, ny), radius, 2)
+            # Wizard-only nodes are dimmed for other classes
+            is_locked_class = node.get("wizard_only") and char_type != "wizard"
+            node_bg_color  = (35, 20, 45) if is_locked_class else ((55, 55, 80) if hovered else (30, 30, 45))
+            node_rim_color = tuple(max(0, c // 3) for c in node["color"]) if is_locked_class else node["color"]
+
+            pygame.draw.circle(screen, node_bg_color, (nx, ny), radius)
+            pygame.draw.circle(screen, node_rim_color, (nx, ny), radius, 2)
 
             for i in range(node["max"]):
-                dot_color = node["color"] if i < node["level"] else (60, 60, 60)
+                dot_color = node["color"] if (i < node["level"] and not is_locked_class) else (60, 60, 60)
                 a  = (i / node["max"]) * 6.283 - 1.57
                 px = nx + math.cos(a) * (radius + 8)
                 py = ny + math.sin(a) * (radius + 8)
                 pygame.draw.circle(screen, dot_color, (int(px), int(py)), 2)
 
-            name_txt  = self.title_font.render(node["name"], True, (255, 255, 255))
-            level_txt = self.stat_font.render(f"{node['level']}/{node['max']}", True, node["color"])
+            name_txt  = self.title_font.render(node["name"], True, (255, 255, 255) if not is_locked_class else (130, 100, 130))
+            level_txt = self.stat_font.render(f"{node['level']}/{node['max']}", True, node_rim_color)
             screen.blit(name_txt,  name_txt.get_rect(center=(nx, ny - 8)))
             screen.blit(level_txt, level_txt.get_rect(center=(nx, ny + 10)))
 
-            if node["level"] < node["max"]:
+            if is_locked_class:
+                lock_txt = self.price_font.render("WIZARD ONLY", True, (180, 80, 220))
+                screen.blit(lock_txt, lock_txt.get_rect(center=(nx, ny + radius + 25)))
+            elif node["level"] < node["max"]:
                 cost_str   = f"${node['cost']}" if node["currency"] == "gold" else f"{node['cost']} SP"
                 cost_color = (255, 215, 0) if node["currency"] == "gold" else (0, 255, 200)
                 cost_surf  = self.price_font.render(cost_str, True, cost_color)

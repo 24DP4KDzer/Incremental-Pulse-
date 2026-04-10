@@ -359,3 +359,30 @@ def get_leaderboard(limit: int = 6) -> list:
     except Exception as e:
         print(f"[DB] get_leaderboard error: {e}")
         return []
+
+def search_leaderboard(username_query: str) -> tuple:
+    """
+    Search ALL leaderboard entries (no limit) for a username match (case-insensitive).
+    Returns (rank, username, char_type, highscore) or None if not found.
+    """
+    if not _connected:
+        return None
+    try:
+        pipeline = [
+            {"$unwind": "$characters"},
+            {"$project": {
+                "username": 1,
+                "char_type": "$characters.type",
+                "highscore": "$characters.highscore"
+            }},
+            {"$sort": {"highscore": -1}},
+        ]
+        results = list(_db.players.aggregate(pipeline))
+        query_lower = username_query.strip().lower()
+        for rank, r in enumerate(results, 1):
+            if r["username"].lower() == query_lower:
+                return (rank, r["username"], r["char_type"], r.get("highscore", 0))
+        return None
+    except Exception as e:
+        print(f"[DB] search_leaderboard error: {e}")
+        return None
