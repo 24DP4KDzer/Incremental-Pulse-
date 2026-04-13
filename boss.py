@@ -91,7 +91,7 @@ class Boss:
                 padding_y = 3    # Empty space between rows
                 num_frames = 2     # Number of columns
 
-                scale = (350, 350)  # Galīgais izmērs, uz kuru scale katru kadru
+                scale = (150, 150)  # Galīgais izmērs, uz kuru scale katru kadru
 
                 for i in range(num_frames):
                     # Rinda 0: Uz augšu (skatās prom)
