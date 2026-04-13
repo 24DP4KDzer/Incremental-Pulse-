@@ -44,7 +44,7 @@ class Player:
 
         # --- SARKANAS MALAS (DAMAGE VIGNETTE) ---
         self.damage_flash_timer = 0          # frames remaining for red flash
-        self.damage_flash_duration = 35      # total frames the flash lasts
+        self.damage_flash_duration = 18      # very short flash — just a quick hint
         self._damage_vignette = self._build_damage_vignette(sw, sh)
         
         # 2. PASTĀVĪGIE STATI (PARAMETRI)
@@ -242,25 +242,21 @@ class Player:
     # funkcija _build_damage_vignette izveido sarkanu vinjetes virsmu ekrāna malām
     @staticmethod
     def _build_damage_vignette(w, h):
-        """Pre-render a red radial vignette (fully opaque version; alpha is set at draw time)."""
+        """Pre-render a tiny soft red shadow only around screen edges — barely noticeable."""
         surf = pygame.Surface((w, h), pygame.SRCALPHA)
-        # Draw several concentric rects that fade outward from transparent centre to red edges
-        steps = 18
-        for i in range(steps):
-            t = i / steps                      # 0 = centre, 1 = edge
-            alpha = int(t ** 1.6 * 255)        # power curve: dark at edge, clear in centre
-            shrink = int((1 - t) * min(w, h) * 0.55)
-            rect = pygame.Rect(shrink, shrink, w - shrink * 2, h - shrink * 2)
-            pygame.draw.rect(surf, (180, 0, 0, 0), surf.get_rect())   # clear full surface first frame — no, just draw the border
-        # Proper approach: draw outward rings
         surf.fill((0, 0, 0, 0))
+        # Only paint a very thin rim: 8 layers, each just a few pixels wide
+        rim = 50          # total rim thickness in pixels
+        steps = 10
+        corner_r = max(0, min(w, h) // 10)   # large corner radius so it feels round/organic
         for i in range(steps, 0, -1):
-            t = i / steps
-            alpha = int(t ** 2.2 * 220)
-            shrink = int((1 - t) * min(w, h) * 0.52)
-            border = max(1, int(min(w, h) * 0.52 / steps) + 2)
+            t = i / steps                     # 1 at outermost, ~0 at innermost
+            alpha = int(t ** 2.5 * 72)        # peaks at ~72 at outermost ring, drops fast → very subtle
+            shrink = int((1 - t) * rim)
             rect = pygame.Rect(shrink, shrink, w - shrink * 2, h - shrink * 2)
-            pygame.draw.rect(surf, (200, 0, 0, alpha), rect, border, border_radius=max(4, border))
+            border_w = max(2, rim // steps + 1)
+            pygame.draw.rect(surf, (210, 0, 0, alpha), rect, border_w,
+                             border_radius=max(corner_r - shrink, 8))
         return surf.convert_alpha()
 
     def trigger_damage_flash(self):
@@ -273,8 +269,8 @@ class Player:
             return
         # Ease-out fade: strongest right after hit, fades quickly
         t = self.damage_flash_timer / self.damage_flash_duration   # 1.0 → 0.0
-        alpha = int(t ** 0.6 * 255)
-        self._damage_vignette.set_alpha(alpha)
+        alpha = int(t ** 0.6 * 255) 
+        self._damage_vignette.set_alpha(alpha) 
         screen.blit(self._damage_vignette, (0, 0))
         self.damage_flash_timer = max(0, self.damage_flash_timer - 1)
 

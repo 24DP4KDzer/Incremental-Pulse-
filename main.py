@@ -900,7 +900,7 @@ while True:
                     delete_confirm_password += event.unicode
                     delete_confirm_error_msg = ""
 
-            if game_state == "menu":
+            elif not show_delete_confirm and game_state == "menu":
                 if event.key == pygame.K_TAB:
                     # izveleties starp username un password laukiem ar TAB
                     if input_field_active == "username":
@@ -908,7 +908,34 @@ while True:
                     else:
                         input_field_active = "username"
                 elif event.key == pygame.K_RETURN:
-                    if user_name.strip() and user_password.strip():
+                    if lb_search_active and lb_search_text.strip():
+                        query = lb_search_text.strip()
+                        found = False
+                        if DB.is_connected():
+                            hit = DB.search_leaderboard(query)
+                            if hit:
+                                rank, nm, ct, sc = hit
+                                lb_search_result = f"#{rank}  {nm} ({ct})  Wave {sc}"
+                                found = True
+                        if not found and os.path.exists(PLAYER_FILE):
+                            try:
+                                csv_entries = []
+                                with open(PLAYER_FILE, 'r', newline='') as f2:
+                                    for row in csv.DictReader(f2):
+                                        try: sc = int(row.get("highscore", 0) or 0)
+                                        except: sc = 0
+                                        csv_entries.append((row.get("name",""), row.get("char_type",""), sc))
+                                csv_entries.sort(key=lambda e: e[2], reverse=True)
+                                for rank, (nm, ct, sc) in enumerate(csv_entries, 1):
+                                    if nm.lower() == query.lower():
+                                        lb_search_result = f"#{rank}  {nm} ({ct})  Wave {sc}"
+                                        found = True
+                                        break
+                            except Exception:
+                                pass
+                        if not found:
+                            lb_search_result = f'"{query}" not found'
+                    elif user_name.strip() and user_password.strip():
                         uname = user_name.strip()
                         upass = user_password.strip()
                         if not player_exists_in_csv(uname):
@@ -954,36 +981,6 @@ while True:
                     elif lb_search_active:
                         lb_search_text = lb_search_text[:-1]
                         lb_search_result = ""
-                elif event.key == pygame.K_RETURN:
-                    if lb_search_active and lb_search_text.strip():
-                        query = lb_search_text.strip()
-                        found = False
-                        # ── Try DB first (searches ALL entries, no limit) ──────
-                        if DB.is_connected():
-                            hit = DB.search_leaderboard(query)
-                            if hit:
-                                rank, nm, ct, sc = hit
-                                lb_search_result = f"#{rank}  {nm} ({ct})  Wave {sc}"
-                                found = True
-                        # ── CSV fallback: scan entire file ───────────────────
-                        if not found and os.path.exists(PLAYER_FILE):
-                            try:
-                                csv_entries = []
-                                with open(PLAYER_FILE, 'r', newline='') as f:
-                                    for row in csv.DictReader(f):
-                                        try: sc = int(row.get("highscore", 0) or 0)
-                                        except: sc = 0
-                                        csv_entries.append((row.get("name",""), row.get("char_type",""), sc))
-                                csv_entries.sort(key=lambda e: e[2], reverse=True)
-                                for rank, (nm, ct, sc) in enumerate(csv_entries, 1):
-                                    if nm.lower() == query.lower():
-                                        lb_search_result = f"#{rank}  {nm} ({ct})  Wave {sc}"
-                                        found = True
-                                        break
-                            except Exception:
-                                pass
-                        if not found:
-                            lb_search_result = f'"{query}" not found'
                 else:
                     if len(event.unicode) > 0:
                         if lb_search_active:
@@ -1267,7 +1264,7 @@ while True:
         if game_bg: screen.blit(game_bg, (0, 0))
         else: screen.fill((5, 5, 15))
 
-        if time_freeze_timer <= 0: player.energy -= 1/60
+        if time_freeze_timer <= 0: player.energy -= (1/60) * getattr(player, 'energy_drain_mult', 1.0)
         if player.dash_cooldown > 0: player.dash_cooldown -= 1
         if time_freeze_timer > 0: time_freeze_timer -= 1
         if nuke_flash_timer > 0: nuke_flash_timer -= 1
@@ -1423,6 +1420,19 @@ while True:
                     p_obj.target.health -= dmg
                     if getattr(player, 'lifesteal', 0) > 0:
                         player.health = min(player.max_health, player.health + player.lifesteal)
+                    # POISON: apply poison stack to target
+                    poison_lvl = getattr(player, 'poison_lvl', 0)
+                    if poison_lvl > 0:
+                        p_obj.target.poison_stacks = getattr(p_obj.target, 'poison_stacks', 0) + poison_lvl
+                    # KNOCKBACK: push target away from player on hit
+                    kb_lvl = getattr(player, 'knockback_lvl', 0)
+                    if kb_lvl > 0 and hasattr(p_obj.target, 'rect'):
+                        _dx = p_obj.target.rect.centerx - player.rect.centerx
+                        _dy = p_obj.target.rect.centery - player.rect.centery
+                        _d = math.hypot(_dx, _dy)
+                        if _d > 0:
+                            p_obj.target.rect.x += int((_dx / _d) * kb_lvl * 8)
+                            p_obj.target.rect.y += int((_dy / _d) * kb_lvl * 8)
                     if p_obj in projectiles: projectiles.remove(p_obj)
             else:
                 if p_obj in projectiles: projectiles.remove(p_obj)
@@ -1431,13 +1441,46 @@ while True:
         for e in enemies[:]:
             if time_freeze_timer <= 0:
                 e.update(player.rect, dilation)
+                # POISON: tick poison damage each frame
+                poison_stacks = getattr(e, 'poison_stacks', 0)
+                if poison_stacks > 0:
+                    e.health -= 0.015 * poison_stacks
+                    e.poison_stacks = max(0, poison_stacks - 0.005)
                 if player.rect.colliderect(e.rect):
                     player.health -= max(0.05, 0.3 - (getattr(player, 'armor', 0) * 0.03))
                     player.trigger_damage_flash()
                     if getattr(player, 'thorns', 0) > 0: e.health -= player.thorns
+                    # SHIELD BURST: chance to knockback attacker
+                    shield_lvl = getattr(player, 'shield_lvl', 0)
+                    if shield_lvl > 0 and random.randint(1, 100) <= shield_lvl * 15:
+                        _dx = e.rect.centerx - player.rect.centerx
+                        _dy = e.rect.centery - player.rect.centery
+                        _d = math.hypot(_dx, _dy)
+                        if _d > 0:
+                            e.rect.x += int((_dx / _d) * 60)
+                            e.rect.y += int((_dy / _d) * 60)
             e.draw(screen)
             if e.health <= 0:
-                enemies.remove(e); player.money += 2; boss_energy += 10
+                # EXPLOSION: deal splash damage to nearby enemies on kill
+                exp_lvl = getattr(player, 'explosion_lvl', 0)
+                if exp_lvl > 0:
+                    exp_radius = 60 + exp_lvl * 20
+                    exp_dmg = player.damage * 0.4 * exp_lvl
+                    for ne in enemies:
+                        if ne is not e and math.hypot(ne.rect.centerx - e.rect.centerx,
+                                                       ne.rect.centery - e.rect.centery) < exp_radius:
+                            ne.health -= exp_dmg
+                    # Visual flash at explosion point
+                    pygame.draw.circle(screen, (255, 140, 0),
+                                       e.rect.center, int(exp_radius * 0.6), 3)
+                enemies.remove(e)
+                # GOLD RUSH: bonus gold chance
+                gold_bonus = 2
+                gold_rush_lvl = getattr(player, 'gold_rush_lvl', 0)
+                if gold_rush_lvl > 0 and random.randint(1, 100) <= gold_rush_lvl * 12:
+                    gold_bonus += gold_rush_lvl * 2
+                player.money += int(gold_bonus * getattr(player, 'gold_modifier', 1.0))
+                boss_energy += 10
                 # Soul Drain: wizard gains a tiny amount of energy per kill
                 soul_lvl = getattr(player, 'soul_drain_lvl', 0)
                 if soul_lvl > 0 and player.char_type == "wizard":
@@ -1496,27 +1539,7 @@ while True:
             flash = pygame.Surface((screen_w, screen_h)); flash.fill((255, 255, 255))
             flash.set_alpha(int((nuke_flash_timer / 15) * 255)); screen.blit(flash, (0, 0))
         player.draw_damage_flash(screen)
-        # ── Red vignette damage indicator ─────────────────────────────────
-        _dmg_flash = getattr(player, 'damage_flash_timer', 0)
-        if _dmg_flash > 0:
-            _vign_alpha = int(180 * (_dmg_flash / max(1, getattr(player, 'damage_flash_duration', 20))))
-            _vign_depth = 50   # how many px the shadow bleeds inward from each edge
-            _vign_surf  = pygame.Surface((screen_w, screen_h), pygame.SRCALPHA)
-            # Four gradient strips: top, bottom, left, right
-            for _step in range(_vign_depth):
-                _edge_alpha = int(_vign_alpha * (1.0 - _step / _vign_depth) ** 1.8)
-                _col = (200, 0, 0, _edge_alpha)
-                # top strip
-                pygame.draw.line(_vign_surf, _col, (0, _step), (screen_w, _step))
-                # bottom strip
-                pygame.draw.line(_vign_surf, _col, (0, screen_h - 1 - _step), (screen_w, screen_h - 1 - _step))
-                # left strip
-                pygame.draw.line(_vign_surf, _col, (_step, 0), (_step, screen_h))
-                # right strip
-                pygame.draw.line(_vign_surf, _col, (screen_w - 1 - _step, 0), (screen_w - 1 - _step, screen_h))
-            screen.blit(_vign_surf, (0, 0))
-        if time_freeze_timer > 0:
-            screen.blit(freeze_surf, (0, 0))
+        # (damage vignette is handled inside draw_damage_flash via player._damage_vignette)
 
         ui_f = 22  # Font size for pixelated UI
         screen.blit(render_pixel_text(f"Money: ${player.money} | SP: {player.skill_points}", ui_f, (255, 215, 0), bold=True), (20, 20))
