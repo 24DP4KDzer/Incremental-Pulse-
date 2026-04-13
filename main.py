@@ -216,7 +216,7 @@ def apply_boss_drop(player, wave):
             trigger_boss_drop_anim("DAMAGE MAXED! +$100")
             return "money"
         else:
-            bonus = int(1 + (wave * 0.2))
+            bonus = int(0.1 + (wave * 0.1))  # Pamata bonuss, kas nedaudz aug ar katru vilni
             old_dmg = player.damage
             player.damage = min(100, player.damage + bonus)
             actual_gain = player.damage - old_dmg
@@ -233,7 +233,7 @@ def apply_boss_drop(player, wave):
             trigger_boss_drop_anim("SPEED MAXED! +$100")
             return "money"
         else:
-            bonus = round(0.2 + (wave * 0.2), 1)
+            bonus = round(0.1 + (wave * 0.1), 1)
             
             # Pieskaitām bonusu, bet neļaujam tam pārsniegt 22
             old_speed = player.speed
@@ -251,7 +251,7 @@ def apply_boss_drop(player, wave):
             player.money += 100
             trigger_boss_drop_anim("HEALTH MAXED! +$100")
             return "money"
-        bonus = round(wave * 0.1, 1)
+        bonus = round(wave * 0.1, 0.1)
         old_mh = player.max_health
         player.max_health = round(min(500, player.max_health + bonus), 1)
         player.health = round(min(500, player.health + bonus), 1)
@@ -272,22 +272,22 @@ def apply_boss_drop(player, wave):
         trigger_boss_drop_anim(f"ARMOR BOOST! +{armor_boost}")
 
     elif drop_type == "lifesteal":
-        if player.lifesteal >= 15:
+        if player.lifesteal >= 10:
             player.money += 100 # Iedodam moneeey bonusu, ja lifesteal jau ir maxed out
             trigger_boss_drop_anim("LIFESTEAL MAXED! +$100")
             return "money"
         else:
             # Aprēķinām bonusu
-            bonus = round(wave * 0.2, 1)
+            bonus = round(wave * 0.1, 0.1)
             
             # Saglabājam veco vērtību, lai zinātu, cik reāli pieskaitījām
             old_ls = player.lifesteal
             
-            # Pieskaitām, bet ierobežojam uz 15 un noapaļojam
-            player.lifesteal = round(min(15, player.lifesteal + bonus), 1)
+            # Pieskaitām, bet ierobežojam uz 10 un noapaļojam
+            player.lifesteal = round(min(10, player.lifesteal + bonus), 0.1)
             
             # Aprēķinām faktisko ieguvumu vizuālajai animācijai
-            actual_gain = round(player.lifesteal - old_ls, 1)
+            actual_gain = round(player.lifesteal - old_ls, 0.1)
             
             if actual_gain > 0:
                 trigger_boss_drop_anim(f"LIFESTEAL BOOST! +{actual_gain}")
