@@ -83,13 +83,13 @@ class Boss:
                 sheet = pygame.image.load("photos/allOfBoss.png").convert_alpha()
 
                 # ── Pielāgo šos skaitļus savam spritu lapas izkārtojumam ──
-                frame_w   = 350    # Rāmja platums pikseļos
-                frame_h   = 350    # Rāmja augstums pikseļos
-                start_x   = 0      # Sākuma X no loksnes kreisā malas
-                start_y   = 0      # Sākuma Y no loksnes augšas
-                padding_x = 0      # Horizontālā atstarpe starp rāmjiem
-                padding_y = 0      # Vertikālā atstarpe starp rāmjiem
-                num_frames = 2     # Kadru skaits vienā animācijā
+                frame_w = 125    # Width of the box
+                frame_h = 157       # Height of the box
+                start_x = 10   # Distance from left edge to the first box
+                start_y = 80    # Distance from top edge to the first box
+                padding_x = 26     # Empty space between columns
+                padding_y = 3    # Empty space between rows
+                num_frames = 2     # Number of columns
 
                 scale = (350, 350)  # Galīgais izmērs, uz kuru scale katru kadru
 
