@@ -1,2 +1,2 @@
 name,password,char_type,money,max_health,radius,speed,damage,multi,aspeed,max_energy,sp,magnet,dash,armor,lifesteal,crit_chance,thorns,regen,gold_modifier,highscore,skill_stamina,skill_damage,skill_lifesteal,skill_explosion,skill_soul_drain,skill_range,skill_knockback,skill_poison,skill_multi,skill_crit,skill_firerate,skill_health,skill_armor,skill_regen,skill_thorns,skill_shield,skill_magnet,skill_greed,skill_gold_rush,skill_energy_saver,skill_speed,skill_dash,skill_dash_cd,skill_blink
-test,test,warrior,1000,100,15,5,10,1.0,1.0,100,0,0,1,0,0.05,0.05,0.01,1.0,0,10,20,5,10,50,10,5,1.5,20,5,2.0,3.0,5.0,1.5,1.5
+test,test,dwarf,2059,500,250,8.4,16.0,5,17,210.0,24,120,1,5.0,20.0,30,0,0.08,1.5,11,20,9,10,50,10,5,1,20,5,3,3,10,1,4,0,0,2,1,0,0,6,1,5,5

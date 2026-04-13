@@ -216,7 +216,7 @@ def apply_boss_drop(player, wave):
             trigger_boss_drop_anim("DAMAGE MAXED! +$100")
             return "money"
         else:
-            bonus = int(0.1 + (wave * 0.1))  # Pamata bonuss, kas nedaudz aug ar katru vilni
+            bonus = int(0.1 + (wave * 0.5))  # Pamata bonuss, kas nedaudz aug ar katru vilni
             old_dmg = player.damage
             player.damage = min(100, player.damage + bonus)
             actual_gain = player.damage - old_dmg
@@ -251,7 +251,7 @@ def apply_boss_drop(player, wave):
             player.money += 100
             trigger_boss_drop_anim("HEALTH MAXED! +$100")
             return "money"
-        bonus = round(wave * 0.1, 0.1)
+        bonus = round(wave * 0.1, 1)
         old_mh = player.max_health
         player.max_health = round(min(500, player.max_health + bonus), 1)
         player.health = round(min(500, player.health + bonus), 1)
@@ -278,16 +278,16 @@ def apply_boss_drop(player, wave):
             return "money"
         else:
             # Aprēķinām bonusu
-            bonus = round(wave * 0.1, 0.1)
+            bonus = round(wave * 0.1, 1)
             
             # Saglabājam veco vērtību, lai zinātu, cik reāli pieskaitījām
             old_ls = player.lifesteal
             
             # Pieskaitām, bet ierobežojam uz 10 un noapaļojam
-            player.lifesteal = round(min(10, player.lifesteal + bonus), 0.1)
+            player.lifesteal = round(min(10, player.lifesteal + bonus), 1)
             
             # Aprēķinām faktisko ieguvumu vizuālajai animācijai
-            actual_gain = round(player.lifesteal - old_ls, 0.1)
+            actual_gain = round(player.lifesteal - old_ls, 1)
             
             if actual_gain > 0:
                 trigger_boss_drop_anim(f"LIFESTEAL BOOST! +{actual_gain}")
@@ -376,8 +376,15 @@ else:
     axe_img_original = None
 
 
+# Icy freeze overlay surfaces
 freeze_surf = pygame.Surface((screen_w, screen_h), pygame.SRCALPHA)
 freeze_surf.fill((0, 150, 255, 40))
+
+# Icy vignette edges
+freeze_vignette = pygame.Surface((screen_w, screen_h), pygame.SRCALPHA)
+for i in range(80):
+    alpha = int(180 * (1 - i / 80))
+    pygame.draw.rect(freeze_vignette, (100, 180, 255, alpha), (i, i, screen_w - 2*i, screen_h - 2*i), 3)
 
 skills = SkillTree(screen_w, screen_h)
 
@@ -1464,8 +1471,8 @@ while True:
                 # EXPLOSION: deal splash damage to nearby enemies on kill
                 exp_lvl = getattr(player, 'explosion_lvl', 0)
                 if exp_lvl > 0:
-                    exp_radius = 60 + exp_lvl * 20
-                    exp_dmg = player.damage * 0.4 * exp_lvl
+                    exp_radius = 1 + exp_lvl * 2
+                    exp_dmg = (0.1 * exp_lvl)
                     for ne in enemies:
                         if ne is not e and math.hypot(ne.rect.centerx - e.rect.centerx,
                                                        ne.rect.centery - e.rect.centery) < exp_radius:
@@ -1491,7 +1498,7 @@ while True:
                 # Saglabājam izšauto ugunsbumbu damage mainīgajā 'boss_projectile_dmg'
                 boss_projectile_dmg = b.update(player.rect, dilation)
                 
-                # Ja mēs saņēmam saapi no ugunsbumbas, atņemam dzīvību (ņemot vērā bruņas)
+                # Ja mēs nesaņēmam saapi no ugunsbumbas, atņemam dzīvību (ņemot vērā bruņas)
                 if boss_projectile_dmg and boss_projectile_dmg > 0:
                     player.health -= max(1, boss_projectile_dmg - getattr(player, 'armor', 0))
                     player.trigger_damage_flash()
@@ -1539,7 +1546,17 @@ while True:
             flash = pygame.Surface((screen_w, screen_h)); flash.fill((255, 255, 255))
             flash.set_alpha(int((nuke_flash_timer / 15) * 255)); screen.blit(flash, (0, 0))
         player.draw_damage_flash(screen)
-        # (damage vignette is handled inside draw_damage_flash via player._damage_vignette)
+        # --- ICY FREEZE OVERLAY ---
+        if time_freeze_timer > 0:
+            # Blue tint overlay
+            screen.blit(freeze_surf, (0, 0))
+            # Icy vignette edges
+            screen.blit(freeze_vignette, (0, 0))
+            # Pulsing ice text
+            pulse = int(abs(math.sin(pygame.time.get_ticks() * 0.003)) * 255)
+            freeze_txt = render_pixel_text(f"FROZEN: {time_freeze_timer // 60 + 1}s", 28, (100, 200, 255), bold=True)
+            freeze_txt.set_alpha(pulse)
+            screen.blit(freeze_txt, freeze_txt.get_rect(center=(screen_w // 2, 140)))
 
         ui_f = 22  # Font size for pixelated UI
         screen.blit(render_pixel_text(f"Money: ${player.money} | SP: {player.skill_points}", ui_f, (255, 215, 0), bold=True), (20, 20))
