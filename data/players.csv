@@ -1,2 +1,4 @@
 name,password,char_type,money,max_health,radius,speed,damage,multi,aspeed,max_energy,sp,magnet,dash,armor,lifesteal,crit_chance,thorns,regen,gold_modifier,highscore,skill_stamina,skill_damage,skill_lifesteal,skill_explosion,skill_soul_drain,skill_range,skill_knockback,skill_poison,skill_multi,skill_crit,skill_firerate,skill_health,skill_armor,skill_regen,skill_thorns,skill_shield,skill_magnet,skill_greed,skill_gold_rush,skill_energy_saver,skill_speed,skill_dash,skill_dash_cd,skill_blink
-test,test,dwarf,2973,500,250,15.200000000000001,27.0,5,12,410.0,31,180,1,8.0,30,60,0,0.16,2.0,11,20,9,10,50,10,5,1,20,5,3,3,10,1,4,0,0,2,1,0,0,6,1,5,5
+test,test,dwarf,46,150,120,3,2,1,25,10.0,0,60,0,0,0,0,0,0.0,1.0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+test,test,wizard,0,100,100,1.3,1.0,1,25,10.0,0,60,0,0,0,0,0,0.0,1.0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+kaapers,yessir,wizard,133735,160.2,250,9.0,8.0,4,13,85.0,3134,210,1,10,5.3,50,5,0.05,2.25,307,15,10,5,5,5,10,8,5,3,10,8,10,10,5,5,3,10,5,5,5,10,1,5,5

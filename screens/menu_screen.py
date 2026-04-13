@@ -206,7 +206,7 @@ def draw_settings_overlay(screen, screen_w, screen_h, music_volume, sfx_volume, 
         'back': back_btn,
         'music_volume': music_volume,
         'sfx_volume': sfx_volume,
-        'dragging': _dragging_slider  # ATDODAM šo atpakaļ main.py!
+        'dragging': _dragging_slider 
     }
 
 

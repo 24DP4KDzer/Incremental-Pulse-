@@ -56,7 +56,7 @@ class Boss:
         elif side == "left": x, y = -100, random.randint(0, screen_h)
         else:                x, y = screen_w + 100, random.randint(0, screen_h)
 
-        self.rect = pygame.Rect(x, y, 350, 350)  # Lielāks hitbox bosa attēlam
+        self.rect = pygame.Rect(x, y, 170, 170)  # Lielāks hitbox bosa attēlam
         self.wave = wave
 
         self.max_health = 25 + (1.5 * wave)
