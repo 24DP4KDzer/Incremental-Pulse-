@@ -30,7 +30,7 @@ def draw_death_screen(screen, screen_w, screen_h, death_timer):
 
 # funkcija draw_pause_menu pieņem pygame.Surface tipa vērtību screen, int tipa vērtību screen_w un int tipa vērtību screen_h un atgriež tuple tipa vērtību button_rects
 def draw_pause_menu(screen, screen_w, screen_h, pause_bg=None):
-    """Draw pause menu overlay with optional background image."""
+
     # Draw background image if provided, otherwise draw a dark gradient panel
     if pause_bg:
         screen.blit(pause_bg, (0, 0))
@@ -40,13 +40,13 @@ def draw_pause_menu(screen, screen_w, screen_h, pause_bg=None):
         overlay.fill((0, 0, 0, 155))
         screen.blit(overlay, (0, 0))
         # Central glowing panel behind the buttons
-        panel_w, panel_h = 380, 420
+        panel_w, panel_h = 380, 500
         panel_x = screen_w // 2 - panel_w // 2
         panel_y = screen_h // 2 - panel_h // 2 - 30
         panel_surf = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
-        panel_surf.fill((10, 12, 28, 210))
+        panel_surf.fill((10, 12, 28, 210)) 
         screen.blit(panel_surf, (panel_x, panel_y))
-        pygame.draw.rect(screen, (0, 200, 120), (panel_x, panel_y, panel_w, panel_h), 2, border_radius=16)
+        pygame.draw.rect(screen, (0, 200, 120), (panel_x, panel_y, panel_w, panel_h), 2, border_radius=16) #izmainīt paneli un apmali, lai izskatītos labāk
         # Subtle corner accents
         accent = (0, 255, 150)
         for cx, cy in [(panel_x, panel_y), (panel_x + panel_w, panel_y),
@@ -60,21 +60,28 @@ def draw_pause_menu(screen, screen_w, screen_h, pause_bg=None):
     btn_x = screen_w // 2 - btn_w // 2
     
     # Save button
-    pause_save_btn = pygame.Rect(btn_x, screen_h // 2 - 20, btn_w, btn_h)
+    pause_save_btn = pygame.Rect(btn_x, screen_h // 2 - 55, btn_w, btn_h)
     pygame.draw.rect(screen, (50, 150, 255), pause_save_btn, border_radius=10)
     pygame.draw.rect(screen, (0, 255, 150), pause_save_btn, 2, border_radius=10)
     save_btn_text = render_pixel_text("SAVE", UI_MEDIUM, (0, 0, 0), bold=True)
     screen.blit(save_btn_text, save_btn_text.get_rect(center=pause_save_btn.center))
     
+    # Settings button
+    pause_settings_btn = pygame.Rect(btn_x, screen_h // 2 + 15, btn_w, btn_h)
+    pygame.draw.rect(screen, (120, 100, 200), pause_settings_btn, border_radius=10)
+    pygame.draw.rect(screen, (0, 255, 150), pause_settings_btn, 2, border_radius=10)
+    settings_btn_text = render_pixel_text("SETTINGS", UI_MEDIUM, (0, 0, 0), bold=True)
+    screen.blit(settings_btn_text, settings_btn_text.get_rect(center=pause_settings_btn.center))
+    
     # Resume button
-    pause_resume_btn = pygame.Rect(btn_x, screen_h // 2 + 50, btn_w, btn_h)
+    pause_resume_btn = pygame.Rect(btn_x, screen_h // 2 + 85, btn_w, btn_h)
     pygame.draw.rect(screen, (50, 200, 100), pause_resume_btn, border_radius=10)
     pygame.draw.rect(screen, (0, 255, 150), pause_resume_btn, 2, border_radius=10)
     resume_btn_text = render_pixel_text("RESUME", UI_MEDIUM, (0, 0, 0), bold=True)
     screen.blit(resume_btn_text, resume_btn_text.get_rect(center=pause_resume_btn.center))
     
     # Quit button
-    pause_quit_btn = pygame.Rect(btn_x, screen_h // 2 + 120, btn_w, btn_h)
+    pause_quit_btn = pygame.Rect(btn_x, screen_h // 2 + 155, btn_w, btn_h)
     pygame.draw.rect(screen, (200, 50, 50), pause_quit_btn, border_radius=10)
     pygame.draw.rect(screen, (0, 255, 150), pause_quit_btn, 2, border_radius=10)
     quit_btn_text = render_pixel_text("QUIT", UI_MEDIUM, (0, 0, 0), bold=True)
@@ -84,4 +91,4 @@ def draw_pause_menu(screen, screen_w, screen_h, pause_bg=None):
     hint = render_pixel_text("Press ESC to Resume", 14, (150, 150, 150))
     screen.blit(hint, (screen_w // 2 - hint.get_width() // 2, screen_h - 50))
     
-    return pause_save_btn, pause_resume_btn, pause_quit_btn
+    return pause_save_btn, pause_settings_btn, pause_resume_btn, pause_quit_btn

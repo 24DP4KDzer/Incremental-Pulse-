@@ -169,8 +169,10 @@ kill_hold_timer = 0
 KILL_HOLD_DURATION = 180  # 3 seconds at 60 FPS
 
 pause_save_btn = pygame.Rect(0, 0, 0, 0)
+pause_settings_btn = pygame.Rect(0, 0, 0, 0)
 pause_resume_btn = pygame.Rect(0, 0, 0, 0)
 pause_quit_btn = pygame.Rect(0, 0, 0, 0)
+pause_show_settings = False
 quit_btn = pygame.Rect(0, 0, 0, 0)          # main-menu quit button
 lb_search_rect = pygame.Rect(0, 0, 0, 0)    # leaderboard search bar rect
 delete_account_btn = pygame.Rect(0, 0, 0, 0)
@@ -846,9 +848,12 @@ while True:
                     start_transition("dissolve")
                     game_state = "paused"
                 elif game_state == "paused":
-                    # ESC while paused → resume
-                    start_transition("fade")
-                    game_state = "playing"
+                    if pause_show_settings:
+                        pause_show_settings = False
+                    else:
+                        # ESC while paused → resume
+                        start_transition("fade")
+                        game_state = "playing"
                 elif game_state == "skill_tree":
                     # ESC in skill tree → do nothing (player is in skill tree after death, can't resume)
                     pass
@@ -1112,16 +1117,24 @@ while True:
                         show_delete_confirm = True
 
             elif game_state == "paused":
+                if pause_show_settings:
+                    if settings_buttons and settings_buttons.get('back').collidepoint(event.pos):
+                        pause_show_settings = False
+                    continue
                 if pause_save_btn.collidepoint(event.pos):
                     save_game_csv(user_name, player.char_type, player, skills, user_password)
                     trigger_save_anim("GAME SAVED!")
+                elif pause_settings_btn.collidepoint(event.pos):
+                    pause_show_settings = True
                 elif pause_resume_btn.collidepoint(event.pos):
                     start_transition("fade")
                     game_state = "playing"
+                    pause_show_settings = False
                 elif pause_quit_btn.collidepoint(event.pos):
                     save_game_csv(user_name, player.char_type, player, skills, user_password)
                     DB.release_session(user_name)
                     game_state = "menu"
+                    pause_show_settings = False
                     user_name = ""; user_password = ""
                     player = Player()
                     for skill_node in skills.skills:
@@ -1620,7 +1633,21 @@ while True:
             boss_drop_timer -= 1
 
     elif game_state == "paused":
-        pause_save_btn, pause_resume_btn, pause_quit_btn = draw_pause_menu(screen, screen_w, screen_h, pause_bg)
+        pause_save_btn, pause_settings_btn, pause_resume_btn, pause_quit_btn = draw_pause_menu(screen, screen_w, screen_h, pause_bg)
+        if pause_show_settings:
+            _mouse_btn = pygame.mouse.get_pressed()[0]
+            res = draw_settings_overlay(
+                screen, screen_w, screen_h,
+                music_volume, sfx_volume, None,
+                mouse_pos=pygame.mouse.get_pos(),
+                mouse_down=_mouse_btn,
+                mouse_up=False,
+            )
+            if isinstance(res, dict):
+                music_volume   = res.get('music_volume', music_volume)
+                sfx_volume     = res.get('sfx_volume',   sfx_volume)
+                settings_buttons = res
+                pygame.mixer.music.set_volume(music_volume / 100.0)
 
     elif game_state == "dead":
         draw_death_screen(screen, screen_w, screen_h, death_timer)
