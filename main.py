@@ -9,7 +9,7 @@ from enemy import Enemy
 from action import Coin, SpecialCoin, HpCoin, Chest
 from projectile import Projectile
 from skill_tree import SkillTree
-from boss import Boss
+from boss import Boss, update_orphaned_fireballs, orphaned_fireballs
 from screens.menu_screen import (draw_main_menu, draw_login_screen, draw_settings_overlay,
                                   draw_leaderboard, draw_delete_confirm)
 from screens.pause_death_screen import draw_death_screen, draw_pause_menu
@@ -1151,6 +1151,7 @@ while True:
                         load_game_csv(user_name, sel, player, skills)
                         enemies.clear(); bosses.clear(); projectiles.clear()
                         coins.clear(); chests.clear(); active_swings.clear()
+                        orphaned_fireballs.clear()
                         current_wave, max_enemies, time_freeze_timer = 1, 4, 0
                         for _ in range(max_enemies): spawn_enemy()
                         game_state = "playing"
@@ -1167,6 +1168,7 @@ while True:
                     player.boss_drops = []
                     skills.sync_with_player(player)
                     enemies.clear(); bosses.clear(); projectiles.clear()
+                    orphaned_fireballs.clear()
                     current_wave, max_enemies = 1, 4
                     game_state = "playing"
                 elif result == "saved":
@@ -1522,8 +1524,19 @@ while True:
                     player.trigger_damage_flash()
             b.draw(screen)
             if b.health <= 0:
+                # [SAREŽĢĪTA LOĢIKA]: Pirms bosa dzēšanas pārvieto visas viņa ugunsbumbas uz
+                # globālo 'orphaned_fireballs' sarakstu, lai tās turpinātu lidot pēc nāves.
+                b.release_fireballs()
                 apply_boss_drop(player, current_wave)
                 bosses.remove(b); player.money += 50; player.skill_points += 1; trigger_save_anim("+1 SP!")
+
+        # Atjaunina un uzzīmē ugunsbumbas, kuras turpina lidot pēc bosa nāves.
+        # Šīs lodes joprojām var kaitēt spēlētājam!
+        if orphaned_fireballs:
+            orphan_dmg = update_orphaned_fireballs(screen, player.rect, dilation, screen_w, screen_h)
+            if orphan_dmg > 0:
+                player.health -= max(1, orphan_dmg - getattr(player, 'armor', 0))
+                player.trigger_damage_flash()
 
         if boss_energy >= boss_goal:
             # beigās 'current_wave', lai boss zinātu, cik stipram viņam jābūt!
